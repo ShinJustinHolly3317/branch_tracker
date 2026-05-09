@@ -32,11 +32,14 @@ export default defineConfig({
   ],
   server: {
     port: 5173,
-    strictPort: true
+    strictPort: true,
+    // Cursor 隧道 Host 非 localhost；`.cursorvm.com` 後綴允許所有子網域
+    allowedHosts: ['.cursorvm.com']
   },
   preview: {
     port: 5173,
-    strictPort: true
+    strictPort: true,
+    allowedHosts: ['.cursorvm.com']
   }
 })
 
