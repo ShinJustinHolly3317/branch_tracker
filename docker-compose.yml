@@ -1,0 +1,85 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_DB=twbbd
+      - POSTGRES_USER=twbbd
+      - POSTGRES_PASSWORD=twbbd
+    ports:
+      - "5432:5432"
+    volumes:
+      - twbbd-postgres-data:/var/lib/postgresql/data
+      - ./infra/postgres/init:/docker-entrypoint-initdb.d:ro
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    environment:
+      - NODE_ENV=development
+      - PORT=8787
+      - DATABASE_URL=postgres://twbbd:twbbd@postgres:5432/twbbd
+    ports:
+      - "8787:8787"
+    depends_on:
+      - postgres
+
+  ingester:
+    build:
+      context: .
+      dockerfile: apps/ingester/Dockerfile
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=postgres://twbbd:twbbd@postgres:5432/twbbd
+      # tools profile：省略時等同 TWSE_STOCKS=all
+      - TWSE_STOCKS=${TWSE_STOCKS:-all}
+      # twse＝僅上市清單（bsContent）；merged＝再加櫃買四碼（略過會暴增）
+      - TW_STOCK_UNIVERSE=${TW_STOCK_UNIVERSE:-twse}
+      - DEBUG_INGEST=${DEBUG_INGEST:-0}
+      - INGEST_MS_BETWEEN_STOCKS=${INGEST_MS_BETWEEN_STOCKS:-350}
+      # Free-tier API key can be provided here (recommended path)
+      - QDATA_API_KEY=${QDATA_API_KEY:-}
+    depends_on:
+      - postgres
+    profiles:
+      - tools
+
+  ingester-cron:
+    build:
+      context: .
+      dockerfile: apps/ingester/Dockerfile
+    command: ["node", "--enable-source-maps", "apps/ingester/dist/index.js", "ingest:cron"]
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=postgres://twbbd:twbbd@postgres:5432/twbbd
+      # all=自動清單（見 TW_STOCK_UNIVERSE）；亦可用逗號分隔自訂股號
+      - TWSE_STOCKS=${TWSE_STOCKS:-all}
+      - TW_STOCK_UNIVERSE=${TW_STOCK_UNIVERSE:-twse}
+      - DEBUG_INGEST=${DEBUG_INGEST:-0}
+      - INGEST_MS_BETWEEN_STOCKS=${INGEST_MS_BETWEEN_STOCKS:-350}
+      - INGEST_CRON=${INGEST_CRON:-0 18 * * 1-5}
+      - INGEST_TZ=Asia/Taipei
+      - INGEST_RUN_ON_START=${INGEST_RUN_ON_START:-false}
+      - QDATA_API_KEY=${QDATA_API_KEY:-}
+    depends_on:
+      - postgres
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    environment:
+      - NODE_ENV=development
+      - VITE_API_BASE=http://localhost:8787
+    ports:
+      - "5173:5173"
+    volumes:
+      # 改 UI 時不必重建映像：存檔後 Vite 會 HMR（首次仍須 build 過映像裝依賴）
+      - ./apps/web:/app/apps/web
+      - ./packages/shared:/app/packages/shared
+    depends_on:
+      - api
+
+volumes:
+  twbbd-postgres-data:

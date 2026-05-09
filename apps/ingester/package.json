@@ -1,0 +1,27 @@
+{
+  "name": "@twbbd/ingester",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "lint": "eslint .",
+    "ingest:once": "node --enable-source-maps dist/index.js ingest:once",
+    "ingest:cron": "node --enable-source-maps dist/index.js ingest:cron"
+  },
+  "dependencies": {
+    "@twbbd/shared": "*",
+    "cheerio": "^1.0.0",
+    "pg": "^8.16.3",
+    "node-cron": "^3.0.3",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/node-cron": "^3.0.11",
+    "@types/node": "^22.0.0",
+    "@types/pg": "^8.15.5",
+    "eslint": "^9.0.0",
+    "typescript": "^5.8.0"
+  }
+}

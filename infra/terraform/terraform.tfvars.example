@@ -1,0 +1,30 @@
+# 複製為 terraform.tfvars（勿提交 git，已列於 .gitignore）
+
+cloudflare_zone_id     = "你的_zone_id"
+cloudflare_account_id  = "選填：要用 terraform 綁 Pages 自訂網域時才填"
+
+# 以下為範例：請改成 Railway / Fly / Render 提供的 hostname
+dns_records = {
+  api = {
+    name    = "api"
+    type    = "CNAME"
+    content = "xxxx.up.railway.app"
+    proxied = false
+    comment = "Express API"
+  }
+  dash = {
+    name    = "dash"
+    type    = "CNAME"
+    content = "twbbd-dashboard.pages.dev"
+    proxied = true
+    comment = "Cloudflare Pages（或用 Pages 自訂網域流程）"
+  }
+}
+
+# 選填：Pages 專案已在 Cloudflare 建好後，由 terraform 掛自訂網域
+# pages_custom_domains = {
+#   prod = {
+#     project_name = "twbbd-dashboard"
+#     domain       = "dash.example.com"
+#   }
+# }
