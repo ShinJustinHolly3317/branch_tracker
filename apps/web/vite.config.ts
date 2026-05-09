@@ -32,11 +32,14 @@ export default defineConfig({
   ],
   server: {
     port: 5173,
-    strictPort: true
+    strictPort: true,
+    // Cursor / 隧道預覽：Host 非 localhost 時 Vite 預設會 403；開發機允許任意 Host
+    allowedHosts: true
   },
   preview: {
     port: 5173,
-    strictPort: true
+    strictPort: true,
+    allowedHosts: true
   }
 })
 
