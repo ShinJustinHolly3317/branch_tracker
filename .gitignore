@@ -36,5 +36,8 @@ tmp/
 temp/
 *.tmp
 
+# supabase cli local artifacts
+.supabase/
+
 # docker / compose local overrides (optional)
 docker-compose.override.yml
