@@ -24,8 +24,8 @@ jobs:
       TWSE_STOCKS: all
       TW_STOCK_UNIVERSE: twse
       DEBUG_INGEST: '0'
-      INGEST_MS_BETWEEN_STOCKS: '200'
-      INGEST_CONCURRENCY: '5'
+      INGEST_MS_BETWEEN_STOCKS: '0'
+      INGEST_CONCURRENCY: '15'
 
     steps:
       - name: 檢查 DATABASE_URL（避免誤以為成功但未寫庫）
