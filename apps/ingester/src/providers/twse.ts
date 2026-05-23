@@ -165,7 +165,10 @@ async function fetchHtmlWithBackoff(stockId: string, recCount: number): Promise<
     if (res.status === 403) {
       // TWSE rate limit：等待後重試（1s → 3s → 9s）
       if (attempt < 3) {
-        await new Promise((r) => setTimeout(r, 1000 * 3 ** (attempt - 1)))
+        const waitMs = 1000 * 3 ** (attempt - 1)
+        // eslint-disable-next-line no-console
+        console.log(`[ingester] 403 rate-limit ${stockId} RecCount=${recCount}，第 ${attempt} 次重試（等 ${waitMs}ms）`)
+        await new Promise((r) => setTimeout(r, waitMs))
         continue
       }
       throw new Error(`twse_fetch_failed stockId=${stockId} status=403 RecCount=${recCount}`)
@@ -177,6 +180,10 @@ async function fetchHtmlWithBackoff(stockId: string, recCount: number): Promise<
 
     const html = await res.text()
     if (html.length > 0) {
+      if (attempt > 1) {
+        // eslint-disable-next-line no-console
+        console.log(`[ingester] retry ok ${stockId} RecCount=${recCount}（第 ${attempt} 次成功）`)
+      }
       return html
     }
 
