@@ -1,10 +1,10 @@
 /**
- * Vercel Serverless：將 Express 套用 serverless-http，所有路由掛載在站台根路徑（見 vercel.json rewrites）。
- * 需在 Vercel 專案設定 Root Directory = apps/api。
+ * Vercel Serverless：build 後從 dist 載入 Express（monorepo 已先 compile @twbbd/shared）。
+ * Root Directory = apps/api；build 見 vercel.json。
  */
 import serverless from 'serverless-http'
 
-import { createApp } from '../src/app.js'
+import { createApp } from '../dist/app.js'
 
 const handler = serverless(createApp())
 export default handler

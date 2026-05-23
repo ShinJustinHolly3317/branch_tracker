@@ -26,6 +26,11 @@ export function createApp(): express.Express {
   )
   app.use(express.json())
 
+  /** Vercel 預覽／根路徑直接開啟時不要 500 空白 */
+  app.get('/', (_req, res) => {
+    res.json({ ok: true, service: 'twbbd-api', health: '/health' })
+  })
+
   app.get('/health', (_req, res) => res.json({ ok: true }))
 
   app.get('/status/latest', async (_req, res) => {
