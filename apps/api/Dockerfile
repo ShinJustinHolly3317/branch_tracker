@@ -15,5 +15,5 @@ RUN npm -w @twbbd/shared run build && npm -w @twbbd/api run build
 
 EXPOSE 8787
 
-CMD ["node", "--enable-source-maps", "apps/api/dist/index.js"]
+CMD ["node", "--enable-source-maps", "apps/api/dist/serve.js"]
 

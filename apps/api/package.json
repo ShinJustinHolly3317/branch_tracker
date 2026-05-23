@@ -3,9 +3,9 @@
   "version": "0.0.1",
   "private": true,
   "type": "module",
-  "main": "dist/index.js",
+  "main": "dist/serve.js",
   "scripts": {
-    "dev": "node --watch --enable-source-maps dist/index.js",
+    "dev": "node --watch --enable-source-maps dist/serve.js",
     "build": "tsc -p tsconfig.json",
     "lint": "eslint ."
   },
