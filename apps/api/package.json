@@ -7,7 +7,8 @@
   "scripts": {
     "dev": "node --watch --enable-source-maps dist/serve.js",
     "build": "tsc -p tsconfig.json",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "test": "npm run build && node --test dist/performance.test.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.106.1",

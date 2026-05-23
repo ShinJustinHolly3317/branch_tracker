@@ -7,6 +7,10 @@ import type pg from 'pg'
 
 type Sample = { branchId: string; branchName: string; value: number; weight: number }
 
+function closeKey(tradeDate: string, stockId: string): string {
+  return `${tradeDate}|${stockId}`
+}
+
 export async function computeBranchPerformance(params: {
   db: pg.Pool
   datesAll: string[] // sorted ascending
@@ -28,53 +32,85 @@ export async function computeBranchPerformance(params: {
     requestedForwardTradingDays
   } = params
 
+  const emptyBase = {
+    startDate: endDate,
+    endDate,
+    tradingDays,
+    forwardTradingDays,
+    metric,
+    minSampleSize,
+    top: [] as BranchPerformanceResponse['top'],
+    reasonCode: 'computed' as const,
+    requestedForwardTradingDays,
+    effectiveForwardTradingDays: forwardTradingDays
+  }
+
   const endIdx = datesAll.lastIndexOf(endDate)
   if (endIdx === -1) {
-    return {
-      startDate: endDate,
-      endDate,
-      tradingDays,
-      forwardTradingDays,
-      metric,
-      minSampleSize,
-      top: [],
-      reasonCode: 'computed',
-      requestedForwardTradingDays,
-      effectiveForwardTradingDays: forwardTradingDays
-    }
+    return emptyBase
   }
 
   const windowStart = Math.max(0, endIdx - tradingDays + 1)
   const windowDates = datesAll.slice(windowStart, endIdx + 1)
+  if (windowDates.length === 0) {
+    return emptyBase
+  }
 
-  const samplesByBranch = new Map<string, Sample[]>()
-  const sampleCountByBranch = new Map<string, number>()
+  const dateIdx = new Map(datesAll.map((d, i) => [d, i]))
 
-  for (const date of windowDates) {
-    const idx = datesAll.lastIndexOf(date)
+  /** 可計算前瞻報酬的 (eventDate, forwardDate) */
+  const eventPairs: { eventDate: string; forwardDate: string }[] = []
+  const closeDates = new Set<string>()
+  for (const eventDate of windowDates) {
+    const idx = dateIdx.get(eventDate)
+    if (idx === undefined) continue
     const fwdIdx = idx + forwardTradingDays
     if (fwdIdx >= datesAll.length) continue
-    const forwardDate = datesAll[fwdIdx]
+    const forwardDate = datesAll[fwdIdx]!
+    eventPairs.push({ eventDate, forwardDate })
+    closeDates.add(eventDate)
+    closeDates.add(forwardDate)
+  }
 
-    const daily = await db.query<{ stock_id: string; payload: unknown }>(
-      `SELECT stock_id, payload
-       FROM daily_stock_blob
-       WHERE trade_date=$1
-         AND market = ANY($2::text[])`,
-      [date, ['TWSE', 'TPEX']]
+  const closeByKey = new Map<string, number>()
+  if (closeDates.size > 0) {
+    const closeR = await db.query<{ trade_date: string; stock_id: string; close: string }>(
+      `SELECT trade_date::text, stock_id, close::text
+       FROM stock_close
+       WHERE trade_date = ANY($1::date[])`,
+      [[...closeDates]]
     )
+    for (const row of closeR.rows) {
+      const n = Number(row.close)
+      if (Number.isFinite(n)) closeByKey.set(closeKey(row.trade_date, row.stock_id), n)
+    }
+  }
 
-    for (const row of daily.rows) {
+  const blobsByDate = new Map<string, { stock_id: string; payload: unknown }[]>()
+  if (windowDates.length > 0) {
+    const dailyR = await db.query<{ trade_date: string; stock_id: string; payload: unknown }>(
+      `SELECT trade_date::text, stock_id, payload
+       FROM daily_stock_blob
+       WHERE trade_date = ANY($1::date[])
+         AND market = ANY($2::text[])`,
+      [windowDates, ['TWSE', 'TPEX']]
+    )
+    for (const row of dailyR.rows) {
+      const list = blobsByDate.get(row.trade_date) ?? []
+      list.push({ stock_id: row.stock_id, payload: row.payload })
+      blobsByDate.set(row.trade_date, list)
+    }
+  }
+
+  const samplesByBranch = new Map<string, Sample[]>()
+
+  for (const { eventDate, forwardDate } of eventPairs) {
+    const dailyRows = blobsByDate.get(eventDate) ?? []
+    for (const row of dailyRows) {
       const stockId = row.stock_id
-      const closes = await db.query<{ close0: string; close1: string }>(
-        `SELECT
-           (SELECT close::text FROM stock_close WHERE trade_date=$1 AND stock_id=$3) AS close0,
-           (SELECT close::text FROM stock_close WHERE trade_date=$2 AND stock_id=$3) AS close1`,
-        [date, forwardDate, stockId]
-      )
-      const close0 = Number(closes.rows[0]?.close0)
-      const close1 = Number(closes.rows[0]?.close1)
-      if (!Number.isFinite(close0) || !Number.isFinite(close1) || close0 <= 0) continue
+      const close0 = closeByKey.get(closeKey(eventDate, stockId))
+      const close1 = closeByKey.get(closeKey(forwardDate, stockId))
+      if (close0 === undefined || close1 === undefined || close0 <= 0) continue
 
       const ret = (close1 - close0) / close0
       const rows = row.payload as TradeByBranchDaily[]
@@ -91,7 +127,6 @@ export async function computeBranchPerformance(params: {
           weight
         })
         samplesByBranch.set(r.branchId, list)
-        sampleCountByBranch.set(r.branchId, (sampleCountByBranch.get(r.branchId) ?? 0) + 1)
       }
     }
   }
@@ -108,7 +143,6 @@ export async function computeBranchPerformance(params: {
       } else if (metric === 'hitRate') {
         value = samples.reduce((acc, s) => acc + (s.value > 0 ? 1 : 0), 0) / n
       } else {
-        // weightedPnlProxy
         value = samples.reduce((acc, s) => acc + s.weight * s.value, 0)
       }
 
@@ -142,4 +176,3 @@ export async function computeBranchPerformance(params: {
       : {})
   }
 }
-
