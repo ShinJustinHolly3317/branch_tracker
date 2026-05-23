@@ -37,6 +37,7 @@ services:
       - TW_STOCK_UNIVERSE=${TW_STOCK_UNIVERSE:-twse}
       - DEBUG_INGEST=${DEBUG_INGEST:-0}
       - INGEST_MS_BETWEEN_STOCKS=${INGEST_MS_BETWEEN_STOCKS:-350}
+      - INGEST_CONCURRENCY=${INGEST_CONCURRENCY:-5}
       # Free-tier API key can be provided here (recommended path)
       - QDATA_API_KEY=${QDATA_API_KEY:-}
     depends_on:
@@ -57,6 +58,7 @@ services:
       - TW_STOCK_UNIVERSE=${TW_STOCK_UNIVERSE:-twse}
       - DEBUG_INGEST=${DEBUG_INGEST:-0}
       - INGEST_MS_BETWEEN_STOCKS=${INGEST_MS_BETWEEN_STOCKS:-350}
+      - INGEST_CONCURRENCY=${INGEST_CONCURRENCY:-5}
       - INGEST_CRON=${INGEST_CRON:-0 18 * * 1-5}
       - INGEST_TZ=Asia/Taipei
       - INGEST_RUN_ON_START=${INGEST_RUN_ON_START:-false}

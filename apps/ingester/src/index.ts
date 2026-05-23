@@ -116,83 +116,105 @@ async function resolveTwseStockIds(env: Env): Promise<string[]> {
 
 async function ingestTwseLatest(params: {
   stockIds: string[]
+  concurrency?: number
   msBetweenStocks?: number
   debugIngest?: boolean
 }) {
-  const { stockIds, msBetweenStocks = 350, debugIngest = false } = params
+  const { stockIds, concurrency = 5, msBetweenStocks = 350, debugIngest = false } = params
   const db = getDb()
-  const client = await db.connect()
-  try {
-    let latestDate: string | undefined
-    let ok = 0
-    let fail = 0
 
-    for (let i = 0; i < stockIds.length; i++) {
-      const stockId = stockIds[i]
-      try {
-        const r = await fetchTwseStockBranchDaily({ stockId })
-        latestDate = r.tradeDate
+  let latestDate: string | undefined
+  let ok = 0
+  let fail = 0
+  let cursor = 0
+  const total = stockIds.length
 
-        await ensureTradingDate(client, r.tradeDate)
+  /** 單一 worker：從 cursor 取下一支股票持續處理，直到清單跑完 */
+  async function worker() {
+    const client = await db.connect()
+    try {
+      while (true) {
+        const i = cursor++
+        if (i >= total) break
+        const stockId = stockIds[i]
+        try {
+          const r = await fetchTwseStockBranchDaily({ stockId })
 
-        if (r.closePrice && r.closePrice > 0) {
+          // 多個 worker 可能同時取得相同 tradeDate，寫入同一值無害
+          latestDate = r.tradeDate
+
+          await ensureTradingDate(client, r.tradeDate)
+
+          if (r.closePrice && r.closePrice > 0) {
+            await client.query(
+              'INSERT INTO stock_close (trade_date, stock_id, close) VALUES ($1,$2,$3) ON CONFLICT (trade_date, stock_id) DO UPDATE SET close=EXCLUDED.close',
+              [r.tradeDate, stockId, r.closePrice]
+            )
+          }
+
           await client.query(
-            'INSERT INTO stock_close (trade_date, stock_id, close) VALUES ($1,$2,$3) ON CONFLICT (trade_date, stock_id) DO UPDATE SET close=EXCLUDED.close',
-            [r.tradeDate, stockId, r.closePrice]
+            'INSERT INTO daily_stock_blob (trade_date, market, stock_id, payload) VALUES ($1,$2,$3,$4::jsonb) ON CONFLICT (trade_date, market, stock_id) DO UPDATE SET payload=EXCLUDED.payload',
+            [r.tradeDate, 'TWSE', stockId, JSON.stringify(r.rows)]
           )
-        }
 
-        await client.query(
-          'INSERT INTO daily_stock_blob (trade_date, market, stock_id, payload) VALUES ($1,$2,$3,$4::jsonb) ON CONFLICT (trade_date, market, stock_id) DO UPDATE SET payload=EXCLUDED.payload',
-          [r.tradeDate, 'TWSE', stockId, JSON.stringify(r.rows)]
-        )
-
-        for (const row of r.rows) {
-          await mergeBranchCatalogRow(client, row.branchId, row.branchName)
-        }
-        ok++
-        // eslint-disable-next-line no-console
-        console.log(
-          `[ingester] ok ${stockId} date=${r.tradeDate} branches=${r.rows.length}` +
-            (r.closePrice ? ` close=${r.closePrice}` : '')
-        )
-      } catch (e) {
-        fail++
-        // eslint-disable-next-line no-console
-        console.log(`[ingester] fail ${stockId} ${ingestErrOneLine(e)}`)
-        if (debugIngest) {
+          for (const row of r.rows) {
+            await mergeBranchCatalogRow(client, row.branchId, row.branchName)
+          }
+          ok++
           // eslint-disable-next-line no-console
-          console.error(e)
+          console.log(
+            `[ingester] ok ${stockId} date=${r.tradeDate} branches=${r.rows.length}` +
+              (r.closePrice ? ` close=${r.closePrice}` : '')
+          )
+        } catch (e) {
+          fail++
+          // eslint-disable-next-line no-console
+          console.log(`[ingester] fail ${stockId} ${ingestErrOneLine(e)}`)
+          if (debugIngest) {
+            // eslint-disable-next-line no-console
+            console.error(e)
+          }
+        }
+
+        // 每支完成後短暫休眠，降低對 TWSE 的請求頻率
+        if (msBetweenStocks > 0) {
+          await new Promise((resolve) => setTimeout(resolve, msBetweenStocks))
+        }
+
+        const processed = ok + fail
+        if (processed % 100 === 0 || processed === total) {
+          // eslint-disable-next-line no-console
+          console.log(`[ingester] 進度 ${processed}/${total} ok=${ok} fail=${fail}`)
         }
       }
-
-      if (i < stockIds.length - 1 && msBetweenStocks > 0) {
-        await new Promise((resolve) => setTimeout(resolve, msBetweenStocks))
-      }
-
-      if ((i + 1) % 100 === 0 || i === stockIds.length - 1) {
-        // eslint-disable-next-line no-console
-        console.log(`[ingester] 進度 ${i + 1}/${stockIds.length} ok=${ok} fail=${fail}`)
-      }
+    } finally {
+      client.release()
     }
+  }
 
+  // 同時啟動 N 個 worker
+  await Promise.all(Array.from({ length: Math.min(concurrency, total) }, worker))
+
+  // 以獨立連線寫入最終狀態
+  const statusClient = await db.connect()
+  try {
     const status: LatestStatusResponse = {
       latestDate,
       provider: 'twse:bsContent',
       markets: ['TWSE']
     }
-    await client.query(
+    await statusClient.query(
       'INSERT INTO ingest_status (id, payload) VALUES (1,$1::jsonb) ON CONFLICT (id) DO UPDATE SET payload=EXCLUDED.payload, updated_at=now()',
       [JSON.stringify(status)]
     )
-
-    // eslint-disable-next-line no-console
-    console.log(`[ingester] 本輪結束 ok=${ok} fail=${fail}`)
-    if (ok === 0 && stockIds.length > 0) {
-      throw new Error('twse_ingest_all_failed')
-    }
   } finally {
-    client.release()
+    statusClient.release()
+  }
+
+  // eslint-disable-next-line no-console
+  console.log(`[ingester] 本輪結束 ok=${ok} fail=${fail}`)
+  if (ok === 0 && total > 0) {
+    throw new Error('twse_ingest_all_failed')
   }
 }
 
@@ -223,6 +245,7 @@ async function runTwseScheduledIngest(params: { env: Env }) {
       const stockIds = await resolveTwseStockIds(env)
       await ingestTwseLatest({
         stockIds,
+        concurrency: env.INGEST_CONCURRENCY,
         msBetweenStocks: env.INGEST_MS_BETWEEN_STOCKS,
         debugIngest: env.DEBUG_INGEST
       })
@@ -266,6 +289,7 @@ async function main() {
     if (cmd === 'ingest:once') {
       await ingestTwseLatest({
         stockIds,
+        concurrency: env.INGEST_CONCURRENCY,
         msBetweenStocks: env.INGEST_MS_BETWEEN_STOCKS,
         debugIngest: env.DEBUG_INGEST
       })
