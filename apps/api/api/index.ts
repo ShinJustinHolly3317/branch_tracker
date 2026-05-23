@@ -1,11 +1,7 @@
-// @ts-nocheck — Vercel 另編譯此檔；執行期載入 build 產物 dist/app.js
 /**
- * Vercel Serverless：build 後從 dist 載入 Express（monorepo 已先 compile @twbbd/shared）。
- * Root Directory = apps/api；build 見 vercel.json。
+ * Vercel：直接 export Express app（Fluid Compute 原生支援，勿用 serverless-http）。
+ * 本機 / Docker 仍走 src/index.ts 的 app.listen。
  */
-import serverless from 'serverless-http'
+import { createApp } from '../src/app.js'
 
-import { createApp } from '../dist/app.js'
-
-const handler = serverless(createApp())
-export default handler
+export default createApp()
