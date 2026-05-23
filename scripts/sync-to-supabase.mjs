@@ -8,13 +8,13 @@
  *   node scripts/sync-to-supabase.mjs
  *
  * 重複資料處理：所有 table 均採 ON CONFLICT DO NOTHING（以 primary key 比對）。
+ * 效能：每批一個 multi-row INSERT，避免逐筆 round-trip。
  */
 
 import pg from 'pg'
 
 const { Pool } = pg
 
-// ── 連線設定 ──────────────────────────────────────────────
 const SOURCE_URL = process.env.SOURCE_DB_URL
 const TARGET_URL = process.env.TARGET_DB_URL
 
@@ -26,45 +26,62 @@ if (!SOURCE_URL || !TARGET_URL) {
 const src = new Pool({ connectionString: SOURCE_URL, max: 4 })
 const dst = new Pool({ connectionString: TARGET_URL, max: 4, ssl: { rejectUnauthorized: false } })
 
-// ── 工具函式 ──────────────────────────────────────────────
-
 function log(msg) {
   console.log(`[${new Date().toISOString()}] ${msg}`)
 }
 
-/**
- * 批次大小：避免單筆 query 過大
- * Supabase free tier 每次 request 建議不要超過太多 rows
- */
-const BATCH = 500
+const BATCH = 200
 
-async function syncInBatches({ table, rows, insertSql, paramsFn, label }) {
+/**
+ * 一批一個 multi-row INSERT，比逐筆快很多。
+ * buildMultiInsert 回傳 { sql, params }。
+ */
+function buildMultiInsert(rows, colNames, valuesFn, conflictClause) {
+  const params = []
+  const placeholderGroups = rows.map((row) => {
+    const vals = valuesFn(row)
+    const start = params.length + 1
+    vals.forEach((v) => params.push(v))
+    return `(${vals.map((_, i) => `$${start + i}`).join(', ')})`
+  })
+  const sql = `
+    INSERT INTO ${colNames.table} (${colNames.cols.join(', ')})
+    VALUES ${placeholderGroups.join(', ')}
+    ${conflictClause}
+  `
+  return { sql, params }
+}
+
+async function syncBatch({ rows, colNames, valuesFn, conflictClause, label }) {
   let inserted = 0
   let skipped = 0
 
   for (let i = 0; i < rows.length; i += BATCH) {
     const chunk = rows.slice(i, i + BATCH)
-    for (const row of chunk) {
-      const params = paramsFn(row)
-      const result = await dst.query(insertSql, params)
-      if (result.rowCount > 0) inserted++
-      else skipped++
+    const { sql, params } = buildMultiInsert(chunk, colNames, valuesFn, conflictClause)
+    const result = await dst.query(sql, params)
+    inserted += result.rowCount ?? 0
+    skipped += chunk.length - (result.rowCount ?? 0)
+
+    if (rows.length > BATCH) {
+      process.stdout.write(`\r  ${label}: ${Math.min(i + BATCH, rows.length)}/${rows.length}...`)
     }
   }
 
+  if (rows.length > BATCH) process.stdout.write('\n')
   log(`  ${label}: inserted=${inserted} skipped(duplicate)=${skipped} total=${rows.length}`)
 }
 
-// ── 各 table 同步 ─────────────────────────────────────────
+// ── 各 table ────────────────────────────────────────────────
 
 async function syncTradingDates() {
   log('📅 trading_dates...')
   const { rows } = await src.query('SELECT trade_date::text FROM trading_dates ORDER BY trade_date')
-  await syncInBatches({
-    table: 'trading_dates',
+  await syncBatch({
     rows,
-    insertSql: 'INSERT INTO trading_dates (trade_date) VALUES ($1) ON CONFLICT DO NOTHING',
-    paramsFn: (r) => [r.trade_date],
+    colNames: { table: 'trading_dates', cols: ['trade_date'] },
+    valuesFn: (r) => [r.trade_date],
+    conflictClause: 'ON CONFLICT DO NOTHING',
     label: 'trading_dates'
   })
 }
@@ -75,16 +92,11 @@ async function syncDailyStockBlob() {
     'SELECT trade_date::text, market, stock_id, payload FROM daily_stock_blob ORDER BY trade_date, stock_id'
   )
   log(`  總計 ${rows.length} 筆，每批 ${BATCH}...`)
-
-  await syncInBatches({
-    table: 'daily_stock_blob',
+  await syncBatch({
     rows,
-    insertSql: `
-      INSERT INTO daily_stock_blob (trade_date, market, stock_id, payload)
-      VALUES ($1, $2, $3, $4::jsonb)
-      ON CONFLICT DO NOTHING
-    `,
-    paramsFn: (r) => [r.trade_date, r.market, r.stock_id, JSON.stringify(r.payload)],
+    colNames: { table: 'daily_stock_blob', cols: ['trade_date', 'market', 'stock_id', 'payload'] },
+    valuesFn: (r) => [r.trade_date, r.market, r.stock_id, JSON.stringify(r.payload)],
+    conflictClause: 'ON CONFLICT DO NOTHING',
     label: 'daily_stock_blob'
   })
 }
@@ -94,15 +106,11 @@ async function syncStockClose() {
   const { rows } = await src.query(
     'SELECT trade_date::text, stock_id, close FROM stock_close ORDER BY trade_date, stock_id'
   )
-  await syncInBatches({
-    table: 'stock_close',
+  await syncBatch({
     rows,
-    insertSql: `
-      INSERT INTO stock_close (trade_date, stock_id, close)
-      VALUES ($1, $2, $3)
-      ON CONFLICT DO NOTHING
-    `,
-    paramsFn: (r) => [r.trade_date, r.stock_id, r.close],
+    colNames: { table: 'stock_close', cols: ['trade_date', 'stock_id', 'close'] },
+    valuesFn: (r) => [r.trade_date, r.stock_id, r.close],
+    conflictClause: 'ON CONFLICT DO NOTHING',
     label: 'stock_close'
   })
 }
@@ -110,15 +118,11 @@ async function syncStockClose() {
 async function syncBranchCatalog() {
   log('🏦 branch_catalog...')
   const { rows } = await src.query('SELECT branch_id, branch_name FROM branch_catalog')
-  await syncInBatches({
-    table: 'branch_catalog',
+  await syncBatch({
     rows,
-    insertSql: `
-      INSERT INTO branch_catalog (branch_id, branch_name)
-      VALUES ($1, $2)
-      ON CONFLICT (branch_id) DO UPDATE SET branch_name = EXCLUDED.branch_name
-    `,
-    paramsFn: (r) => [r.branch_id, r.branch_name],
+    colNames: { table: 'branch_catalog', cols: ['branch_id', 'branch_name'] },
+    valuesFn: (r) => [r.branch_id, r.branch_name],
+    conflictClause: 'ON CONFLICT (branch_id) DO UPDATE SET branch_name = EXCLUDED.branch_name',
     label: 'branch_catalog'
   })
 }
@@ -126,15 +130,11 @@ async function syncBranchCatalog() {
 async function syncStockCatalog() {
   log('📋 stock_catalog...')
   const { rows } = await src.query('SELECT stock_id, stock_name FROM stock_catalog')
-  await syncInBatches({
-    table: 'stock_catalog',
+  await syncBatch({
     rows,
-    insertSql: `
-      INSERT INTO stock_catalog (stock_id, stock_name)
-      VALUES ($1, $2)
-      ON CONFLICT (stock_id) DO UPDATE SET stock_name = EXCLUDED.stock_name
-    `,
-    paramsFn: (r) => [r.stock_id, r.stock_name],
+    colNames: { table: 'stock_catalog', cols: ['stock_id', 'stock_name'] },
+    valuesFn: (r) => [r.stock_id, r.stock_name],
+    conflictClause: 'ON CONFLICT (stock_id) DO UPDATE SET stock_name = EXCLUDED.stock_name',
     label: 'stock_catalog'
   })
 }
@@ -142,20 +142,16 @@ async function syncStockCatalog() {
 async function syncIngestStatus() {
   log('ℹ️  ingest_status...')
   const { rows } = await src.query('SELECT id, payload FROM ingest_status')
-  await syncInBatches({
-    table: 'ingest_status',
+  await syncBatch({
     rows,
-    insertSql: `
-      INSERT INTO ingest_status (id, payload)
-      VALUES ($1, $2::jsonb)
-      ON CONFLICT (id) DO UPDATE SET payload = EXCLUDED.payload, updated_at = now()
-    `,
-    paramsFn: (r) => [r.id, JSON.stringify(r.payload)],
+    colNames: { table: 'ingest_status', cols: ['id', 'payload'] },
+    valuesFn: (r) => [r.id, JSON.stringify(r.payload)],
+    conflictClause: 'ON CONFLICT (id) DO UPDATE SET payload = EXCLUDED.payload, updated_at = now()',
     label: 'ingest_status'
   })
 }
 
-// ── 主流程 ────────────────────────────────────────────────
+// ── 主流程 ──────────────────────────────────────────────────
 
 async function main() {
   log('🚀 開始同步 本機 → Supabase')
