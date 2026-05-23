@@ -144,53 +144,71 @@ function parseBsContentHtml(html: string, stockId: string): ParsedPage {
   }
 }
 
-/** 同一 RecCount 下 empty body 短暫重試；403 rate-limit 時退避重試 */
+/** 同一 RecCount 下 empty body 短暫重試；403 rate-limit / 網路錯誤時退避重試 */
 async function fetchHtmlWithBackoff(stockId: string, recCount: number): Promise<string> {
   const url = buildBsContentUrl(stockId, recCount)
   let lastStatus = 0
+  let lastErr: unknown
 
   for (let attempt = 1; attempt <= 3; attempt++) {
-    const res = await fetch(url, {
-      headers: {
-        'user-agent':
-          'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-        accept: 'text/html,application/xhtml+xml',
-        'accept-language': 'zh-TW,zh;q=0.9,en;q=0.7',
-        referer: 'https://bsr.twse.com.tw/bshtm/',
-        'accept-encoding': 'gzip'
-      }
-    })
-    lastStatus = res.status
+    const waitMs = 1000 * 3 ** (attempt - 2) // attempt=1→不等, 2→1s, 3→3s
 
-    if (res.status === 403) {
-      // TWSE rate limit：等待後重試（1s → 3s → 9s）
-      if (attempt < 3) {
-        const waitMs = 1000 * 3 ** (attempt - 1)
+    try {
+      const res = await fetch(url, {
+        signal: AbortSignal.timeout(15_000), // 15 秒 timeout，避免 GitHub Actions 掛住
+        headers: {
+          'user-agent':
+            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+          accept: 'text/html,application/xhtml+xml',
+          'accept-language': 'zh-TW,zh;q=0.9,en;q=0.7',
+          referer: 'https://bsr.twse.com.tw/bshtm/',
+          'accept-encoding': 'gzip'
+        }
+      })
+      lastStatus = res.status
+
+      if (res.status === 403) {
+        // TWSE rate limit：等待後重試
+        if (attempt < 3) {
+          // eslint-disable-next-line no-console
+          console.log(`[ingester] 403 rate-limit ${stockId} RecCount=${recCount}，第 ${attempt} 次重試（等 ${waitMs}ms）`)
+          await new Promise((r) => setTimeout(r, waitMs))
+          continue
+        }
+        throw new Error(`twse_fetch_failed stockId=${stockId} status=403 RecCount=${recCount}`)
+      }
+
+      if (!res.ok) {
+        throw new Error(`twse_fetch_failed stockId=${stockId} status=${res.status} RecCount=${recCount}`)
+      }
+
+      const html = await res.text()
+      if (html.length > 0) {
+        if (attempt > 1) {
+          // eslint-disable-next-line no-console
+          console.log(`[ingester] retry ok ${stockId} RecCount=${recCount}（第 ${attempt} 次成功）`)
+        }
+        return html
+      }
+
+      await new Promise((r) => setTimeout(r, 400 * attempt))
+    } catch (err) {
+      lastErr = err
+      // 網路錯誤或 timeout：若還有重試機會則等待後繼續
+      const isRetryable =
+        err instanceof TypeError || // fetch 網路層錯誤
+        (err instanceof DOMException && err.name === 'TimeoutError') // AbortSignal.timeout
+      if (isRetryable && attempt < 3) {
         // eslint-disable-next-line no-console
-        console.log(`[ingester] 403 rate-limit ${stockId} RecCount=${recCount}，第 ${attempt} 次重試（等 ${waitMs}ms）`)
+        console.log(`[ingester] network-err ${stockId} RecCount=${recCount}（${(err as Error).message.slice(0, 60)}），第 ${attempt} 次重試（等 ${waitMs}ms）`)
         await new Promise((r) => setTimeout(r, waitMs))
         continue
       }
-      throw new Error(`twse_fetch_failed stockId=${stockId} status=403 RecCount=${recCount}`)
+      throw err
     }
-
-    if (!res.ok) {
-      throw new Error(`twse_fetch_failed stockId=${stockId} status=${res.status} RecCount=${recCount}`)
-    }
-
-    const html = await res.text()
-    if (html.length > 0) {
-      if (attempt > 1) {
-        // eslint-disable-next-line no-console
-        console.log(`[ingester] retry ok ${stockId} RecCount=${recCount}（第 ${attempt} 次成功）`)
-      }
-      return html
-    }
-
-    await new Promise((r) => setTimeout(r, 400 * attempt))
   }
 
-  throw new Error(`twse_fetch_failed stockId=${stockId} empty_body status=${lastStatus} RecCount=${recCount}`)
+  throw lastErr ?? new Error(`twse_fetch_failed stockId=${stockId} empty_body status=${lastStatus} RecCount=${recCount}`)
 }
 
 /**
