@@ -1,3 +1,6 @@
+# DEPRECATED: 已改用 Cloudflare Pages，此檔案不再使用
+# 請參考 .github/workflows/deploy-web-cloudflare.yml
+#
 # 靜態前端（apps/web）；API 請另獨立部署（見 docs/deploy-zero-cost.md）
 #
 # Netlify 儀表板可選：將 Base directory 留空並用下方 build.command 從 monorepo 根建置，
