@@ -1,5 +1,7 @@
 # 個人／極低流量 —— 近乎零成本部署（Supabase + GitHub Actions + 靜態前端 + Serverless API）
 
+> **問題追蹤報告（HTML）**：[`docs/deployment-report.html`](deployment-report.html) — 今日 Vercel / Netlify 修正時間軸與待辦，可直接用瀏覽器開啟。
+
 適用對象：**個人使用**、預期流量極低、希望將 **資料庫、排程爬蟲、前端、後端** 分拆到各家免費額度內的典型架構。
 
 > 備註：免費層級與配额會隨各平台調整；上線前仍以官方文件為準。

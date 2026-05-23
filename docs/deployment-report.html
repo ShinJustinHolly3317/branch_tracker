@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TWBBD 部署修正報告 · 2026-05-23</title>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --surface: #1a2332;
+      --surface2: #243044;
+      --text: #e7ecf3;
+      --muted: #8b9cb3;
+      --accent: #14b8a6;
+      --accent-dim: rgba(20, 184, 166, 0.15);
+      --warn: #f59e0b;
+      --warn-dim: rgba(245, 158, 11, 0.12);
+      --err: #f87171;
+      --err-dim: rgba(248, 113, 113, 0.12);
+      --ok: #4ade80;
+      --ok-dim: rgba(74, 222, 128, 0.12);
+      --border: rgba(255, 255, 255, 0.08);
+      --mono: "SF Mono", "Fira Code", "Consolas", monospace;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "PingFang TC", "Noto Sans TC", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.65;
+      font-size: 15px;
+    }
+
+    .wrap {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 4rem;
+    }
+
+    header {
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    h1 {
+      font-size: 1.65rem;
+      font-weight: 700;
+      margin: 0 0 0.35rem;
+      letter-spacing: -0.02em;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      font-size: 0.95rem;
+      margin: 0;
+    }
+
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-top: 1rem;
+    }
+
+    .pill {
+      font-size: 0.78rem;
+      padding: 0.2rem 0.65rem;
+      border-radius: 999px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--muted);
+    }
+
+    h2 {
+      font-size: 1.15rem;
+      margin: 2rem 0 0.85rem;
+      color: var(--accent);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    h2::before {
+      content: "";
+      width: 4px;
+      height: 1.1em;
+      background: var(--accent);
+      border-radius: 2px;
+    }
+
+    h3 {
+      font-size: 0.95rem;
+      margin: 1.25rem 0 0.5rem;
+      color: var(--text);
+    }
+
+    p { margin: 0.5rem 0; color: #c8d3e0; }
+
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1rem 1.15rem;
+      margin: 0.75rem 0;
+    }
+
+    .card.warn { border-color: rgba(245, 158, 11, 0.35); background: linear-gradient(135deg, var(--surface) 0%, var(--warn-dim) 100%); }
+    .card.ok { border-color: rgba(74, 222, 128, 0.3); background: linear-gradient(135deg, var(--surface) 0%, var(--ok-dim) 100%); }
+    .card.err { border-color: rgba(248, 113, 113, 0.35); background: linear-gradient(135deg, var(--surface) 0%, var(--err-dim) 100%); }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.88rem;
+      margin: 0.5rem 0;
+    }
+
+    th, td {
+      text-align: left;
+      padding: 0.55rem 0.65rem;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+
+    th {
+      color: var(--muted);
+      font-weight: 600;
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    code, pre {
+      font-family: var(--mono);
+      font-size: 0.82rem;
+    }
+
+    code {
+      background: var(--surface2);
+      padding: 0.12rem 0.4rem;
+      border-radius: 4px;
+      color: #a5f3fc;
+    }
+
+    pre {
+      background: #0a0e14;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.85rem 1rem;
+      overflow-x: auto;
+      margin: 0.5rem 0;
+      color: #cbd5e1;
+      line-height: 1.5;
+    }
+
+    .timeline { list-style: none; padding: 0; margin: 0; }
+
+    .timeline li {
+      position: relative;
+      padding: 0 0 1.25rem 1.5rem;
+      border-left: 2px solid var(--surface2);
+      margin-left: 0.35rem;
+    }
+
+    .timeline li:last-child { border-left-color: transparent; padding-bottom: 0; }
+
+    .timeline li::before {
+      content: "";
+      position: absolute;
+      left: -5px;
+      top: 0.35rem;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent);
+    }
+
+    .timeline li.fail::before { background: var(--err); }
+    .timeline li.fix::before { background: var(--ok); }
+
+    .commit { color: var(--muted); font-family: var(--mono); font-size: 0.78rem; }
+
+    .status {
+      display: inline-block;
+      font-size: 0.72rem;
+      font-weight: 600;
+      padding: 0.15rem 0.45rem;
+      border-radius: 4px;
+      margin-left: 0.35rem;
+    }
+
+    .status.build-ok { background: var(--ok-dim); color: var(--ok); }
+    .status.runtime-fail { background: var(--err-dim); color: var(--err); }
+    .status.fixed { background: var(--accent-dim); color: var(--accent); }
+
+    ul.compact { margin: 0.35rem 0; padding-left: 1.25rem; color: #c8d3e0; }
+    ul.compact li { margin: 0.25rem 0; }
+
+    .arch {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 0.65rem;
+      margin: 0.75rem 0;
+    }
+
+    .arch-item {
+      background: var(--surface2);
+      border-radius: 8px;
+      padding: 0.75rem;
+      border: 1px solid var(--border);
+    }
+
+    .arch-item strong { display: block; font-size: 0.85rem; margin-bottom: 0.25rem; }
+    .arch-item span { font-size: 0.8rem; color: var(--muted); }
+
+    .checklist { list-style: none; padding: 0; }
+    .checklist li {
+      padding: 0.4rem 0;
+      padding-left: 1.6rem;
+      position: relative;
+      color: #c8d3e0;
+    }
+    .checklist li::before {
+      content: "☐";
+      position: absolute;
+      left: 0;
+      color: var(--muted);
+    }
+
+    .issue-block {
+      border-left: 3px solid var(--err);
+      padding-left: 1rem;
+      margin: 1rem 0;
+    }
+
+    .issue-block.resolved { border-left-color: var(--ok); }
+
+    footer {
+      margin-top: 3rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--border);
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+
+    @media print {
+      body { background: #fff; color: #111; }
+      .card, pre { border: 1px solid #ccc; background: #f8f8f8; }
+      :root { --text: #111; --muted: #555; --accent: #0d9488; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>TWBBD 零成本部署 — 修正與問題追蹤報告</h1>
+      <p class="subtitle">branch_tracker · 個人全端拆分架構（Supabase + GitHub Actions + Netlify + Vercel）</p>
+      <div class="meta">
+        <span class="pill">更新：2026-05-23</span>
+        <span class="pill">Repo：ShinJustinHolly3317/branch_tracker</span>
+        <span class="pill">最新 commit：（待 push）</span>
+        <span class="pill">API：branch-tracker-api-cxg5.vercel.app</span>
+      </div>
+    </header>
+
+    <!-- ========== 架構 ========== -->
+    <h2>目標架構</h2>
+    <div class="arch">
+      <div class="arch-item">
+        <strong>Postgres</strong>
+        <span>Supabase Free · 每日 ingest 寫入防休眠</span>
+      </div>
+      <div class="arch-item">
+        <strong>Ingester</strong>
+        <span>GitHub Actions cron · <code>daily-twse-ingest.yml</code></span>
+      </div>
+      <div class="arch-item">
+        <strong>Frontend</strong>
+        <span>Netlify · <code>apps/web/dist</code> SPA</span>
+      </div>
+      <div class="arch-item">
+        <strong>API</strong>
+        <span>Vercel · Root = <code>apps/api</code> · Express</span>
+      </div>
+    </div>
+
+    <div class="card ok">
+      <strong>網域說明</strong>
+      <p>Vercel 預設網址永遠是 <code>*.vercel.app</code>，不是 <code>*.api</code>。專案名稱含 <code>api</code> 只是命名，例如 <code>branch-tracker-api-cxg5.vercel.app</code> 是正確的。</p>
+    </div>
+
+    <!-- ========== 帳號與 Secrets ========== -->
+    <h2>需開通帳號與 Secrets 對照</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>平台</th>
+          <th>用途</th>
+          <th>必填變數 / Secret</th>
+          <th>設定位置</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>GitHub</strong></td>
+          <td>原始碼 + 每日爬蟲 CI</td>
+          <td><code>DATABASE_URL</code></td>
+          <td>Repo → Settings → Secrets and variables → Actions</td>
+        </tr>
+        <tr>
+          <td><strong>Supabase</strong></td>
+          <td>Postgres</td>
+          <td>連線字串（建議 Transaction pooler + <code>sslmode=require</code>）</td>
+          <td>Project Settings → Database → Connection string</td>
+        </tr>
+        <tr>
+          <td><strong>Vercel</strong></td>
+          <td>Express API</td>
+          <td><code>DATABASE_URL</code>、選用 <code>API_PG_POOL_MAX=2</code></td>
+          <td>Project → Settings → Environment Variables → Production</td>
+        </tr>
+        <tr>
+          <td><strong>Netlify</strong></td>
+          <td>React SPA</td>
+          <td><code>VITE_API_BASE=https://…vercel.app</code>（無尾隨 <code>/</code>）</td>
+          <td>Site → Environment variables（Build）</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- ========== 平台設定摘要 ========== -->
+    <h2>各平台設定摘要</h2>
+
+    <h3>Vercel（API）</h3>
+    <ul class="compact">
+      <li><strong>Root Directory</strong>：<code>apps/api</code></li>
+      <li><strong>Install</strong>（<code>vercel.json</code>）：<code>cd ../.. && npm ci</code></li>
+      <li><strong>Build</strong>：<code>cd ../.. && npm run -w @twbbd/shared build && npm run -w @twbbd/api build</code></li>
+      <li><strong>入口</strong>：Vercel 偵測 <code>src/index.ts</code> 的 <code>export default app</code>；工廠在 <code>src/createApp.ts</code></li>
+      <li><strong>本機 / Docker</strong>：改走 <code>src/serve.ts</code>（<code>app.listen</code>）</li>
+    </ul>
+    <pre>GET https://branch-tracker-api-cxg5.vercel.app/health
+GET https://branch-tracker-api-cxg5.vercel.app/status/latest
+GET https://branch-tracker-api-cxg5.vercel.app/stocks/2330?days=20</pre>
+
+    <h3>Netlify（Web）</h3>
+    <ul class="compact">
+      <li>根目錄 <code>netlify.toml</code> 已含 build + SPA fallback</li>
+      <li><strong>Base directory 留空</strong>（monorepo 從根 build）</li>
+      <li>Publish：<code>apps/web/dist</code></li>
+    </ul>
+
+    <h3>GitHub Actions（Ingester）</h3>
+    <ul class="compact">
+      <li>檔案：<code>.github/workflows/daily-twse-ingest.yml</code></li>
+      <li>排程：週一至五 10:00 UTC（≈ 台北 18:00）</li>
+      <li>可手動 Run workflow 補跑</li>
+      <li>私有 repo 注意 Actions 分鐘額度（ingest 可能跑很久）</li>
+    </ul>
+
+    <!-- ========== 今日新增 / 修改檔案 ========== -->
+    <h2>今日新增 / 修改的部署相關檔案</h2>
+    <table>
+      <thead>
+        <tr><th>檔案</th><th>用途</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>.github/workflows/daily-twse-ingest.yml</code></td><td>每日 TWSE ingest → Supabase</td></tr>
+        <tr><td><code>netlify.toml</code></td><td>前端 build、publish、SPA redirect</td></tr>
+        <tr><td><code>apps/api/vercel.json</code></td><td>monorepo install/build 指令</td></tr>
+        <tr><td><code>apps/api/src/createApp.ts</code></td><td>Express 路由工廠（非 Vercel 入口）</td></tr>
+        <tr><td><code>apps/api/src/index.ts</code></td><td>Vercel 入口 <code>export default app</code></td></tr>
+        <tr><td><code>apps/api/src/serve.ts</code></td><td>Docker / 本機 <code>listen</code></td></tr>
+        <tr><td><code>docs/deploy-zero-cost.md</code></td><td>Markdown 部署說明</td></tr>
+        <tr><td><code>.env.example</code></td><td>本機 / Supabase 環境變數範本</td></tr>
+      </tbody>
+    </table>
+
+    <!-- ========== 修正時間軸 ========== -->
+    <h2>修正時間軸（2026-05-23）</h2>
+    <ul class="timeline">
+      <li class="fix">
+        <span class="commit">e078cc4</span> feat: update cicd<br />
+        初版：GitHub Actions、netlify.toml、Vercel serverless 骨架（<code>api/index.ts</code> + serverless-http）、<code>createApp()</code> 重構
+      </li>
+      <li class="fail">
+        <strong>Build 失敗 #1</strong> — <code>TS2307: Cannot find module '@supabase/supabase-js'</code><br />
+        <code>supabaseAdmin.ts</code> 有 import 但 <code>package.json</code> 未宣告依賴
+        <span class="status fixed">已修</span>
+        <br /><span class="commit">5ffbf1f</span> 補上 <code>@supabase/supabase-js</code>
+      </li>
+      <li class="fail">
+        <strong>Build 失敗 #2</strong> — <code>Cannot find module '@twbbd/shared'</code><br />
+        Vercel 只在 <code>apps/api</code> 跑 <code>npm run build</code>，未先 build workspace shared
+        <span class="status fixed">已修</span>
+        <br /><span class="commit">eb6fe8a</span> <code>vercel.json</code> 加 <code>installCommand</code> / <code>buildCommand</code> 從 monorepo 根執行
+      </li>
+      <li class="fail">
+        <strong>Runtime 失敗 #1</strong> — Dashboard Ready 但 preview <strong>500</strong>、error rate ~65%<br />
+        <code>/health</code> → 504 TIMEOUT；根路徑 → 500 FUNCTION_INVOCATION_FAILED
+        <span class="status runtime-fail">當時未解</span>
+      </li>
+      <li>
+        <span class="commit">abbe640 → b7adad3</span> 嘗試：handler 改載入 <code>dist/</code>、<code>@ts-nocheck</code>、加根路徑 JSON
+      </li>
+      <li class="fail">
+        <strong>Build 失敗 #3</strong> — <code>TS7016: Could not find declaration file for '../dist/app.js'</code><br />
+        Vercel 另編譯 <code>api/index.ts</code> 時型別檢查 dist 失敗
+        <span class="status fixed">已繞過</span>
+      </li>
+      <li>
+        <span class="commit">02331ba</span> 移除 serverless-http，改直接 export Express app（仍 crash）
+      </li>
+      <li class="fail">
+        <strong>Runtime 失敗 #2</strong> — Vercel Logs：<br />
+        <code>Invalid export found in module ".../src/app.js". The default export must be a function or server.</code><br />
+        原因（第一版修正不完整）：Vercel 優先載入 <code>src/app.ts</code>，在該檔 <code>export default createApp()</code> 仍被判定無效
+        <span class="status fixed">已修 v2</span>
+        <br />
+        <strong>最終解法</strong>：
+        <ul class="compact">
+          <li><code>src/app.ts</code> 更名 <code>src/createApp.ts</code>（避開 Vercel 自動入口）</li>
+          <li>新增 <code>src/index.ts</code>：<code>const app = createApp(); export default app</code>（同官方 Express 範例）</li>
+          <li><code>src/serve.ts</code> 僅 Docker / 本機 listen</li>
+        </ul>
+      </li>
+    </ul>
+
+    <!-- ========== 驗收清單 ========== -->
+    <h2>驗收清單</h2>
+    <div class="card">
+      <ul class="checklist">
+        <li>Vercel deploy commit ≥ <code>1d69d69</code> 且狀態 Ready</li>
+        <li><code>GET /health</code> → <code>{"ok":true}</code></li>
+        <li><code>GET /</code> → JSON（非 500 錯誤頁）</li>
+        <li>Vercel 已設 <code>DATABASE_URL</code> 並 Redeploy</li>
+        <li><code>GET /status/latest</code> 有 <code>latestDate</code></li>
+        <li><code>GET /stocks/2330?days=20</code> 的 <code>branches</code> 非空（需 ingest 有跑）</li>
+        <li>GitHub Actions ingest workflow 綠燈</li>
+        <li>Netlify 設 <code>VITE_API_BASE</code> 後前端搜尋正常、無 CORS / localhost 錯誤</li>
+        <li>Netlify 直接開 <code>/branch</code>、<code>/performance</code> 不 404</li>
+      </ul>
+    </div>
+
+    <!-- ========== 待追蹤 / 新問題 ========== -->
+    <h2>待追蹤 / 新問題（持續更新區）</h2>
+    <p>之後遇到問題請加在這一區，方便回顧。格式：現象 → 原因 → 解法 → commit。</p>
+
+    <div class="issue-block" id="issue-pending-vercel-verify">
+      <h3>⏳ Vercel <code>1d69d69</code> 部署後 runtime 待確認</h3>
+      <p><strong>現象</strong>：修正 default export 後，需確認 <code>/health</code> 是否從 500/504 恢復正常。</p>
+      <p><strong>下一步</strong>：Redeploy 完成後跑驗收清單；若仍失敗，查 Vercel → Logs → Functions runtime error。</p>
+      <p><strong>可能後續問題</strong>：<code>DATABASE_URL</code> 未設或 Supabase pooler 連線設定錯誤 → 僅資料 API 失敗、<code>/health</code> 仍 OK。</p>
+    </div>
+
+    <div class="issue-block" id="issue-template" style="border-left-color: var(--muted); opacity: 0.85;">
+      <h3>📝 新問題範本（複製使用）</h3>
+      <pre>&lt;div class="issue-block"&gt;
+  &lt;h3&gt;❌ [簡短標題]&lt;/h3&gt;
+  &lt;p&gt;&lt;strong&gt;時間&lt;/strong&gt;：YYYY-MM-DD HH:mm&lt;/p&gt;
+  &lt;p&gt;&lt;strong&gt;現象&lt;/strong&gt;：…&lt;/p&gt;
+  &lt;p&gt;&lt;strong&gt;Log / 錯誤碼&lt;/strong&gt;：…&lt;/p&gt;
+  &lt;p&gt;&lt;strong&gt;原因&lt;/strong&gt;：…&lt;/p&gt;
+  &lt;p&gt;&lt;strong&gt;解法&lt;/strong&gt;：…&lt;/p&gt;
+  &lt;p&gt;&lt;strong&gt;Commit&lt;/strong&gt;：…&lt;/p&gt;
+&lt;/div&gt;</pre>
+    </div>
+
+    <!-- ========== 教訓 ========== -->
+    <h2>教訓備忘（別再踩）</h2>
+    <div class="card warn">
+      <ul class="compact">
+        <li><strong>Vercel ≠ Dockerfile</strong>：不能用 <code>apps/api/Dockerfile</code> 直接部署；Docker 留給 compose / Render / Fly。</li>
+        <li><strong>Monorepo</strong>：Root = <code>apps/api</code> 時，install/build 必須 <code>cd ../.. && npm ci</code> 並先 build <code>@twbbd/shared</code>。</li>
+        <li><strong>Vercel Express（2024+）</strong>：<code>src/app.ts</code> 需 <code>export default</code> Express 實例；勿用過時的 <code>serverless-http</code> + <code>api/index.ts</code> 雙入口。</li>
+        <li><strong>Ready ≠ 能用</strong>：Build 綠燈只代表編譯過；要看 error rate 與 <code>/health</code>。</li>
+        <li><strong><code>VITE_*</code> 是 build time</strong>：改 Netlify API 網址後一定要重新 deploy 前端。</li>
+        <li><strong>ingest 與 API 共用</strong> <code>DATABASE_URL</code>，但 GitHub Secrets 與 Vercel Env 要<strong>分別設定</strong>。</li>
+      </ul>
+    </div>
+
+    <!-- ========== 相關文件 ========== -->
+    <h2>相關文件</h2>
+    <ul class="compact">
+      <li><code>docs/deploy-zero-cost.md</code> — Markdown 版部署指南</li>
+      <li><code>README.md</code> — 本機 Docker、ingest、方案比較</li>
+      <li><a href="https://vercel.com/docs/frameworks/backend/express">Vercel — Express on Vercel</a></li>
+    </ul>
+
+    <footer>
+      本報告為靜態 HTML，可直接用瀏覽器開啟 <code>docs/deployment-report.html</code>。<br />
+      更新方式：編輯此檔「待追蹤 / 新問題」區塊，或請 agent 同步 commit 時間軸。
+    </footer>
+  </div>
+</body>
+</html>

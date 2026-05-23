@@ -259,6 +259,3 @@ export function createApp(): express.Express {
 
   return app
 }
-
-/** Vercel Fluid Compute 需 default export Express 實例（見官方 Express on Vercel 文件） */
-export default createApp()
