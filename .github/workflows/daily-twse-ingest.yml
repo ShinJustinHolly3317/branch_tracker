@@ -52,3 +52,27 @@ jobs:
 
       - name: ingest:once（TWSE bsContent）
         run: npm run -w @twbbd/ingester ingest:once
+
+      - name: 寄送成功通知信
+        if: success()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          secure: true
+          username: ${{ secrets.NOTIFY_GMAIL_USER }}
+          password: ${{ secrets.NOTIFY_GMAIL_APP_PASSWORD }}
+          subject: "✅ TWBBD ingest 完成 ${{ github.run_number }} · ${{ github.run_id }}"
+          to: slammingthebasket123@gmail.com
+          from: TWBBD Ingest <${{ secrets.NOTIFY_GMAIL_USER }}>
+          body: |
+            TWSE 每日 ingest 執行成功。
+
+            Repo：${{ github.repository }}
+            Workflow：${{ github.workflow }}
+            Run #：${{ github.run_number }}
+            Trigger：${{ github.event_name }}
+            時間（UTC）：${{ github.event.head_commit.timestamp || 'scheduled' }}
+
+            詳細 log：
+            https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
