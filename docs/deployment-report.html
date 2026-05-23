@@ -265,7 +265,7 @@
       <div class="meta">
         <span class="pill">更新：2026-05-23</span>
         <span class="pill">Repo：ShinJustinHolly3317/branch_tracker</span>
-        <span class="pill">最新 commit：（待 push）</span>
+        <span class="pill">最新 commit：6ef2684</span>
         <span class="pill">API：branch-tracker-api-cxg5.vercel.app</span>
       </div>
     </header>
@@ -430,6 +430,7 @@ GET https://branch-tracker-api-cxg5.vercel.app/stocks/2330?days=20</pre>
           <li>新增 <code>src/index.ts</code>：<code>const app = createApp(); export default app</code>（同官方 Express 範例）</li>
           <li><code>src/serve.ts</code> 僅 Docker / 本機 listen</li>
         </ul>
+        <span class="commit">6ef2684</span>
       </li>
     </ul>
 
@@ -437,7 +438,7 @@ GET https://branch-tracker-api-cxg5.vercel.app/stocks/2330?days=20</pre>
     <h2>驗收清單</h2>
     <div class="card">
       <ul class="checklist">
-        <li>Vercel deploy commit ≥ <code>1d69d69</code> 且狀態 Ready</li>
+        <li>Vercel deploy commit ≥ <code>6ef2684</code> 且狀態 Ready</li>
         <li><code>GET /health</code> → <code>{"ok":true}</code></li>
         <li><code>GET /</code> → JSON（非 500 錯誤頁）</li>
         <li>Vercel 已設 <code>DATABASE_URL</code> 並 Redeploy</li>
@@ -454,7 +455,7 @@ GET https://branch-tracker-api-cxg5.vercel.app/stocks/2330?days=20</pre>
     <p>之後遇到問題請加在這一區，方便回顧。格式：現象 → 原因 → 解法 → commit。</p>
 
     <div class="issue-block" id="issue-pending-vercel-verify">
-      <h3>⏳ Vercel <code>1d69d69</code> 部署後 runtime 待確認</h3>
+      <h3>⏳ Vercel <code>6ef2684</code> 部署後 runtime 待確認</h3>
       <p><strong>現象</strong>：修正 default export 後，需確認 <code>/health</code> 是否從 500/504 恢復正常。</p>
       <p><strong>下一步</strong>：Redeploy 完成後跑驗收清單；若仍失敗，查 Vercel → Logs → Functions runtime error。</p>
       <p><strong>可能後續問題</strong>：<code>DATABASE_URL</code> 未設或 Supabase pooler 連線設定錯誤 → 僅資料 API 失敗、<code>/health</code> 仍 OK。</p>
