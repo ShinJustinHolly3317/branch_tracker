@@ -1,22 +1,99 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import { api } from '../api'
-import type { BranchSuggestion, ByBranchWindowResponse } from '@twbbd/shared'
+import { useDashboardTabCache } from '../DashboardTabCache'
+import type { BranchSuggestion } from '@twbbd/shared'
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 
 const BAR_FILL = '#0f9b8e'
 
 export function BranchPage() {
-  const [query, setQuery] = useState('')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const { branchTab, setBranchTab } = useDashboardTabCache()
+  const { query, selected, days, data, hint } = branchTab
+
   const [suggestions, setSuggestions] = useState<BranchSuggestion[]>([])
   const [openSuggest, setOpenSuggest] = useState(false)
-  const [selected, setSelected] = useState<BranchSuggestion | null>(null)
   const [highlightIdx, setHighlightIdx] = useState(0)
 
-  const [days, setDays] = useState(20)
-  const [data, setData] = useState<ByBranchWindowResponse | null>(null)
   const [loading, setLoading] = useState(false)
-  const [hint, setHint] = useState<string | null>(null)
   const suggestSeq = useRef(0)
+  const daysRef = useRef(days)
+  useEffect(() => {
+    daysRef.current = days
+  }, [days])
+
+  const runWithBranchId = useCallback(
+    async (branchId: string, windowTradingDays?: number) => {
+      const n = typeof windowTradingDays === 'number' ? windowTradingDays : daysRef.current
+
+      setBranchTab((prev) => ({ ...prev, hint: null }))
+      setLoading(true)
+      try {
+        const resp = await api.byBranch(branchId, n)
+        setBranchTab((prev) => ({ ...prev, data: resp }))
+        if (!resp.stocks.length) {
+          setBranchTab((prev) => ({
+            ...prev,
+            hint: '這段區間暫無持股明細，換個天數或待資料更新後再試。'
+          }))
+        }
+      } catch {
+        setBranchTab((prev) => ({
+          ...prev,
+          data: null,
+          hint: '連線異常，請確認 API 已啟動。'
+        }))
+      } finally {
+        setLoading(false)
+      }
+    },
+    [setBranchTab]
+  )
+
+  /** 網址帶 `branchId` 時：每次出現都吃一次並清 query（對應 SPA 來回／深連結） */
+  useEffect(() => {
+    const branchIdRaw = searchParams.get('branchId')?.trim()
+    if (!branchIdRaw) return
+
+    const branchNameRaw = searchParams.get('branchName')?.trim()
+
+    let stockBranchIdDecoded: string
+    try {
+      stockBranchIdDecoded = decodeURIComponent(branchIdRaw)
+    } catch {
+      stockBranchIdDecoded = branchIdRaw
+    }
+
+    let branchNameDecoded = ''
+    if (branchNameRaw) {
+      try {
+        branchNameDecoded = decodeURIComponent(branchNameRaw)
+      } catch {
+        branchNameDecoded = branchNameRaw
+      }
+    }
+
+    const next = new URLSearchParams(searchParams)
+    next.delete('branchId')
+    next.delete('branchName')
+    setSearchParams(next, { replace: true })
+
+    const suggestion: BranchSuggestion = {
+      branchId: stockBranchIdDecoded,
+      branchName: branchNameDecoded ? branchNameDecoded : stockBranchIdDecoded
+    }
+
+    setBranchTab((prev) => ({
+      ...prev,
+      selected: suggestion,
+      query: suggestion.branchName || suggestion.branchId,
+      hint: null
+    }))
+    setOpenSuggest(true)
+
+    void runWithBranchId(suggestion.branchId, daysRef.current)
+  }, [runWithBranchId, searchParams, setBranchTab, setSearchParams])
 
   useEffect(() => {
     const q = query.trim()
@@ -46,44 +123,49 @@ export function BranchPage() {
   }, [data])
 
   async function run() {
-    setHint(null)
-
     let branchId = selected?.branchId
     if (!branchId && query.trim()) {
       const hit = suggestions.find((s) => s.branchName === query.trim())
       branchId = hit?.branchId
-      if (hit) setSelected(hit)
+      if (hit)
+        setBranchTab((prev) => ({
+          ...prev,
+          selected: hit
+        }))
     }
 
     if (!branchId) {
-      setHint('請輸入分點名稱關鍵字，並從清單選一筆分點。')
-      setData(null)
+      setBranchTab((prev) => ({
+        ...prev,
+        hint: '請輸入分點名稱關鍵字，並從清單選一筆分點。',
+        data: null
+      }))
       return
     }
 
-    setLoading(true)
-    try {
-      const resp = await api.byBranch(branchId, days)
-      setData(resp)
-      if (!resp.stocks.length) {
-        setHint('這段區間暫無持股明細，換個天數或待資料更新後再試。')
-      }
-    } catch {
-      setData(null)
-      setHint('連線異常，請確認 API 已啟動。')
-    } finally {
-      setLoading(false)
-    }
+    await runWithBranchId(branchId)
   }
 
   function pickSuggestion(s: BranchSuggestion) {
-    setSelected(s)
-    setQuery(s.branchName || s.branchId)
+    setBranchTab((prev) => ({
+      ...prev,
+      selected: s,
+      query: s.branchName || s.branchId,
+      hint: null
+    }))
     setOpenSuggest(false)
-    setHint(null)
   }
 
   const showDropdown = openSuggest && suggestions.length > 0
+
+  /** Stock 頁 deeplink：`/?stockId=` */
+  function stockSearchPath(stockId: string, stockName: string | undefined) {
+    const sp = new URLSearchParams()
+    sp.set('stockId', stockId)
+    const n = stockName?.trim()
+    if (n) sp.set('stockName', n)
+    return `/?${sp.toString()}`
+  }
 
   return (
     <div className="grid2">
@@ -98,8 +180,12 @@ export function BranchPage() {
               value={query}
               placeholder="例如：土銀、元大、合庫…"
               onChange={(e) => {
-                setQuery(e.target.value)
-                setSelected(null)
+                const v = e.target.value
+                setBranchTab((prev) => ({
+                  ...prev,
+                  query: v,
+                  selected: null
+                }))
                 setOpenSuggest(true)
               }}
               onFocus={() => setOpenSuggest(true)}
@@ -152,7 +238,12 @@ export function BranchPage() {
               min={1}
               max={365}
               value={days}
-              onChange={(e) => setDays(Number(e.target.value))}
+              onChange={(e) =>
+                setBranchTab((prev) => ({
+                  ...prev,
+                  days: Number(e.target.value)
+                }))
+              }
             />
           </div>
 
@@ -187,8 +278,10 @@ export function BranchPage() {
                 {data.stocks.slice(0, 50).map((s) => (
                   <tr key={s.stockId}>
                     <td>
-                      <span className="mono">{s.stockId}</span>
-                      {s.stockName ? ` ${s.stockName}` : null}
+                      <Link className="performance-branch-link" to={stockSearchPath(s.stockId, s.stockName)}>
+                        <span className="mono">{s.stockId}</span>
+                        {s.stockName ? ` ${s.stockName}` : ''}
+                      </Link>
                     </td>
                     <td>{s.buyShares.toLocaleString()}</td>
                     <td>{s.sellShares.toLocaleString()}</td>

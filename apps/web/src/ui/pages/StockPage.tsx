@@ -1,22 +1,27 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import { api } from '../api'
-import type { ByStockWindowResponse, StockSuggestion } from '@twbbd/shared'
+import { useDashboardTabCache } from '../DashboardTabCache'
+import type { StockSuggestion } from '@twbbd/shared'
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts'
 
 const PIE_COLORS = ['#0f9b8e', '#14b8a6', '#2dd4bf', '#5eead4', '#99f6e4', '#0d8177', '#0f5952', '#134e4a', '#5ebfb5', '#d5f5f0']
 
 export function StockPage() {
-  const [query, setQuery] = useState('2330')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const { stockTab, setStockTab, bootstrapRefs } = useDashboardTabCache()
+  const { query, selected, days, data, hint } = stockTab
+
   const [suggestions, setSuggestions] = useState<StockSuggestion[]>([])
   const [openSuggest, setOpenSuggest] = useState(false)
-  const [selected, setSelected] = useState<StockSuggestion | null>(null)
   const [highlightIdx, setHighlightIdx] = useState(0)
 
-  const [days, setDays] = useState(20)
-  const [data, setData] = useState<ByStockWindowResponse | null>(null)
   const [loading, setLoading] = useState(false)
-  const [hint, setHint] = useState<string | null>(null)
   const suggestSeq = useRef(0)
+  const daysRef = useRef(days)
+  useEffect(() => {
+    daysRef.current = days
+  }, [days])
 
   useEffect(() => {
     const q = query.trim()
@@ -46,51 +51,140 @@ export function StockPage() {
   }, [data])
 
   function pickSuggestion(s: StockSuggestion) {
-    setSelected(s)
-    setQuery(`${s.stockId} ${s.stockName}`.trim())
+    setStockTab((prev) => ({
+      ...prev,
+      selected: s,
+      query: `${s.stockId} ${s.stockName}`.trim(),
+      hint: null
+    }))
     setOpenSuggest(false)
-    setHint(null)
   }
 
-  async function loadStock() {
-    setHint(null)
-    setLoading(true)
-    try {
-      let stockId = selected?.stockId
-      if (!stockId && query.trim()) {
-        const trimmed = query.trim()
-        const digits = trimmed.match(/[0-9]{4}/)?.[0]
-        stockId =
-          digits ??
-          suggestions.find((s) => s.stockName === trimmed || `${s.stockId} ${s.stockName}` === trimmed)?.stockId
-      }
-
-      if (!stockId) {
-        setData(null)
-        setHint('請輸入股票代號或中文名稱，並從下拉選單選一筆。')
+  const loadStockById = useCallback(
+    async (stockIdRaw: string, windowTradingDays?: number) => {
+      const sid = stockIdRaw.trim()
+      const n = typeof windowTradingDays === 'number' ? windowTradingDays : daysRef.current
+      if (!sid) {
+        setStockTab((prev) => ({
+          ...prev,
+          data: null,
+          hint: '請輸入股票代號或中文名稱，並從下拉選單選一筆。'
+        }))
         return
       }
 
-      const resp = await api.byStock(stockId.trim(), days)
-      setData(resp)
-      if (!resp.branches.length) {
-        setHint('這段區間尚無分點明細，換個天數或待資料更新後再試。')
+      setStockTab((prev) => ({ ...prev, hint: null }))
+      setLoading(true)
+      try {
+        const resp = await api.byStock(sid, n)
+        setStockTab((prev) => ({
+          ...prev,
+          data: resp,
+          hint: resp.branches.length
+            ? null
+            : '這段區間尚無分點明細，換個天數或待資料更新後再試。'
+        }))
+      } catch {
+        setStockTab((prev) => ({
+          ...prev,
+          data: null,
+          hint: '連線異常，請確認 API 已啟動。'
+        }))
+      } finally {
+        setLoading(false)
       }
-    } catch {
-      setData(null)
-      setHint('連線異常，請確認 API 已啟動。')
-    } finally {
-      setLoading(false)
+    },
+    [setStockTab]
+  )
+
+  /** 進預設查詢；修改條件後請按「查詢」 */
+  async function loadStock() {
+    let stockId = stockTab.selected?.stockId
+    if (!stockId && stockTab.query.trim()) {
+      const trimmed = stockTab.query.trim()
+      const digits = trimmed.match(/[0-9]{4}/)?.[0]
+      stockId =
+        digits ??
+        suggestions.find((s) => s.stockName === trimmed || `${s.stockId} ${s.stockName}` === trimmed)?.stockId
     }
+
+    if (!stockId) {
+      setStockTab((prev) => ({
+        ...prev,
+        data: null,
+        hint: '請輸入股票代號或中文名稱，並從下拉選單選一筆。'
+      }))
+      return
+    }
+
+    await loadStockById(stockId)
   }
 
-  // 首次進頁帶出預設查詢；修改條件後請按「查詢」。
+  // ① `/?stockId=` 深連結 ② 首訪且無快取：預設 2330；有快取則不再自動打 API
   useEffect(() => {
+    const idRaw = searchParams.get('stockId')?.trim()
+    if (idRaw) {
+      bootstrapRefs.stockDefaultBootstrapFired.current = true
+
+      let stockIdDecoded = idRaw
+      try {
+        stockIdDecoded = decodeURIComponent(idRaw)
+      } catch {
+        stockIdDecoded = idRaw
+      }
+
+      const nameRaw = searchParams.get('stockName')?.trim()
+      let stockNameDecoded = ''
+      if (nameRaw) {
+        try {
+          stockNameDecoded = decodeURIComponent(nameRaw)
+        } catch {
+          stockNameDecoded = nameRaw
+        }
+      }
+
+      const next = new URLSearchParams(searchParams)
+      next.delete('stockId')
+      next.delete('stockName')
+      setSearchParams(next, { replace: true })
+
+      const sug: StockSuggestion = { stockId: stockIdDecoded, stockName: stockNameDecoded }
+      setStockTab((prev) => ({
+        ...prev,
+        selected: sug,
+        query: stockNameDecoded ? `${stockIdDecoded} ${stockNameDecoded}`.trim() : stockIdDecoded,
+        hint: null
+      }))
+      void loadStockById(stockIdDecoded, daysRef.current)
+      return
+    }
+
+    if (stockTab.data != null || stockTab.hint != null) return
+
+    if (bootstrapRefs.stockDefaultBootstrapFired.current) return
+    bootstrapRefs.stockDefaultBootstrapFired.current = true
     void loadStock()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [
+    loadStockById,
+    searchParams,
+    setSearchParams,
+    setStockTab,
+    stockTab.data,
+    stockTab.hint,
+    bootstrapRefs
+  ])
 
   const showDropdown = openSuggest && suggestions.length > 0
+
+  /** Branch 頁 deeplink：與 Performance 排行榜同款 `branchId` / `branchName` */
+  function branchSearchPath(branchId: string, branchName: string | undefined) {
+    const sp = new URLSearchParams()
+    sp.set('branchId', branchId)
+    const name = (branchName || '').trim()
+    if (name) sp.set('branchName', name)
+    return `/branch?${sp.toString()}`
+  }
 
   return (
     <div className="grid2">
@@ -104,8 +198,12 @@ export function StockPage() {
               aria-controls="stock-suggest-list"
               value={query}
               onChange={(e) => {
-                setQuery(e.target.value)
-                setSelected(null)
+                const v = e.target.value
+                setStockTab((prev) => ({
+                  ...prev,
+                  query: v,
+                  selected: null
+                }))
                 setOpenSuggest(true)
               }}
               onFocus={() => setOpenSuggest(true)}
@@ -160,7 +258,12 @@ export function StockPage() {
               min={1}
               max={365}
               value={days}
-              onChange={(e) => setDays(Number(e.target.value))}
+              onChange={(e) =>
+                setStockTab((prev) => ({
+                  ...prev,
+                  days: Number(e.target.value)
+                }))
+              }
             />
           </div>
           <div className="field">
@@ -196,7 +299,11 @@ export function StockPage() {
               <tbody>
                 {data.branches.slice(0, 50).map((b) => (
                   <tr key={b.branchId}>
-                    <td>{b.branchName || b.branchId}</td>
+                    <td>
+                      <Link className="performance-branch-link" to={branchSearchPath(b.branchId, b.branchName)}>
+                        {b.branchName || b.branchId}
+                      </Link>
+                    </td>
                     <td>{b.buyShares.toLocaleString()}</td>
                     <td>{b.sellShares.toLocaleString()}</td>
                     <td>{b.netShares.toLocaleString()}</td>

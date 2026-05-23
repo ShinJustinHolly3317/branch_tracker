@@ -103,6 +103,16 @@ docker-compose --profile tools run --rm -e TWSE_STOCKS=all ingester
 
 ### 上線部署計畫（服務選型 + 建議步驟）
 
+#### 近乎零成本主線（個人）：Supabase + GitHub Actions + Netlify／Vercel
+
+若你希望 **Postgres（Supabase）**、**定時 ingest 改用 GitHub Actions**、前端與 API 完全拆分，並以各家免費額度撐過極低流量，請優先閱讀：
+
+- **`docs/deploy-zero-cost.md`**（Secret、Cron、SPA fallback、API Serverless、`DATABASE_URL` 對照）
+
+相關檔案：**`.github/workflows/daily-twse-ingest.yml`**、**`netlify.toml`**、`apps/api/vercel.json`、`apps/api/api/index.ts`。
+
+---
+
 本專案有四個**邏輯元件**，部署時請拆開想：
 
 | 元件 | 現況 | 上線時注意 |
@@ -110,9 +120,9 @@ docker-compose --profile tools run --rm -e TWSE_STOCKS=all ingester
 | **Web** | Vite SPA，`npm run -w @twbbd/web build` 產出靜態檔 | 需設定 **`VITE_API_BASE`** 指向正式 API 網址（含 `https://`） |
 | **API** | Express | 須能連到 Postgres；生產環境務必設定 **CORS** 只放行你的前端網域 |
 | **Postgres** | 存日線、分點目錄、查詢結果 | 建議開啟備份/PITR；注意連線數與儲存 |
-| **Ingester** | 對 TWSE **連續 HTTP 數十分鐘**（千檔級） | **不適合**塞進 Cloudflare Worker「單次請求」模型（執行時間/CPU 上限）；須用 **長生命週期行程**（容器 cron、VM、GitHub Actions 長 job 等） |
+| **Ingester** | 對 TWSE **連續 HTTP 數十分鐘**（千檔級） | **不適合**塞進 Cloudflare Worker「單次請求」模型（執行時間/CPU 上限）；適合 **`ingester-cron` 容器**／**長生命週期 VM**，或 **`GitHub Actions` 長時間 job**（見 `daily-twse-ingest.yml`，留意私有 repo 的分鐘額度） |
 
-先前討論過「便宜、邊緣、Serverless」時，**Cloudflare Workers + KV / R2** 適合 **讀多寫少、短請求 API**；本專案目前採 **Postgres + Express** 的方式，較務實的是 **混合架構**：前端與靜態資源走 **Cloudflare Pages**，後端與爬蟲維持 **小型 always-on 服務**（Docker 一台）。
+先前討論過「便宜、邊緣、Serverless」時，**Cloudflare Workers + KV / R2** 適合 **讀多寫少、短請求 API**；本專案目前仍以 **Postgres + Express API** 為主。若你不想租常駐主機：**API** 可走 **Vercel Serverless**（`apps/api/api/index.ts` + `vercel.json`），**前端**可走 **Netlify/Vercel 靜態**，**資料庫**用 **Supabase**，**每日 ingest** 用 **GitHub Actions**——細節已收斂進 **`docs/deploy-zero-cost.md`**。
 
 ---
 
@@ -120,11 +130,12 @@ docker-compose --profile tools run --rm -e TWSE_STOCKS=all ingester
 
 | 方案 | 前端 | API + 資料 | Ingester | 改程式量 | 適合誰 |
 |------|------|------------|----------|----------|--------|
+| **D（零分拆）**：Supabase + Actions + SPA + Serverless API | Netlify／Vercel 靜態 | **Supabase Postgres**；API 採 **`apps/api` Vercel**（`serverless-http`） | **GitHub Actions** `daily-twse-ingest.yml` → `ingest:once` | **中低**（本 repo 已補工作流程與進入點） | 個人／極低流量／希望 **0～極低成本** |
 | **A（推薦）混合雲** | **Cloudflare Pages**（或 Netlify / Vercel 靜態） | **Fly.io / Railway / Render** 等跑 **Docker**：`api` + `postgres` + `ingester-cron` 同 stack | 與 API 同機 **cron 容器**（等同現在 compose） | **最少** | 想快上線、少改架構 |
 | **B 全託管無伺服器** | Cloudflare Pages | **Workers + KV / D1**，API 改寫存取層 | **GitHub Actions** 排程跑 `ingest:once`（或獨立小 VM），經 **HTTPS 內部 API** 或 **REST 管線** 寫入 KV | **大** | 願意為 Workers 付 refactor |
 | **C 單機 VPS** | Nginx 提供 `dist/` 靜態檔 | 同一台 **Docker Compose** 全套 | 同機 | **少** | 接受自己維護 OS / 防火牆 |
 
-**建議預設選方案 A**：與本 repo 的 `docker-compose.yml` 心智模型一致，只是把機器換成雲上一台。
+**建議預設**：若你已經有 **Compose**／喜歡一機跑完，仍可選方案 **A**。若你希望 **資料庫、排程與請求後端進一步拆離**，先看 **`docs/deploy-zero-cost.md`**（方案 **D**）。
 
 ##### Terraform（階段性：Cloudflare DNS / Pages 網域）
 
@@ -174,8 +185,9 @@ docker-compose --profile tools run --rm -e TWSE_STOCKS=all ingester
 | 服務 | 重要變數 |
 |------|----------|
 | Web（build） | `VITE_API_BASE` |
-| API | `DATABASE_URL`、`PORT`、CORS 設定（程式內或反向代理） |
-| Ingester | `DATABASE_URL`、`TWSE_STOCKS`、`TW_STOCK_UNIVERSE`、`INGEST_CRON`、`INGEST_TZ`、`INGEST_MS_BETWEEN_STOCKS` |
+| API（Vercel / Docker） | `DATABASE_URL`、`PORT`（Docker 常駐）、CORS |
+| Ingester（容器 cron / 手動一次性） | `DATABASE_URL`、`TWSE_STOCKS`、`TW_STOCK_UNIVERSE`、`INGEST_CRON`、`INGEST_TZ`、`INGEST_MS_BETWEEN_STOCKS` |
+| GitHub Actions（見 `daily-twse-ingest.yml`） | `DATABASE_URL`（Repository secret） |
 
 ---
 

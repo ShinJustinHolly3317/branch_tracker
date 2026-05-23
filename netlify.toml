@@ -1,0 +1,17 @@
+# 靜態前端（apps/web）；API 請另獨立部署（見 docs/deploy-zero-cost.md）
+#
+# Netlify 儀表板可選：將 Base directory 留空並用下方 build.command 從 monorepo 根建置，
+# 或將 Base directory 設為 repo 根並保留此檔於根目錄。
+
+[build]
+  command = "npm ci && npm run -w @twbbd/shared build && npm run -w @twbbd/web build"
+  publish = "apps/web/dist"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+# SPA：`/branch`、`/performance` 等 client-side route 重整不要 404
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

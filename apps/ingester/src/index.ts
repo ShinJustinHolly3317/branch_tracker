@@ -197,7 +197,7 @@ async function ingestTwseLatest(params: {
 }
 
 /**
- * 以 node-cron 在指定時區每日（預設週一至週五）觸發 TWSE 爬蟲寫入 Redis
+ * 以 node-cron 在指定時區每日（預設週一至週五）觸發 TWSE 爬蟲寫入 Postgres
  */
 async function runTwseScheduledIngest(params: { env: Env }) {
   const { env } = params

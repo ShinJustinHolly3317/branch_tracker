@@ -10,11 +10,11 @@
     "lint": "eslint ."
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.105.4",
     "@twbbd/shared": "*",
     "cors": "^2.8.5",
     "express": "^4.21.2",
     "pg": "^8.16.3",
+    "serverless-http": "^3.2.0",
     "zod": "^3.24.1"
   },
   "devDependencies": {

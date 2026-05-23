@@ -35,11 +35,27 @@ function parseNumberLike(s: string): number {
   return Number.isFinite(n) ? n : 0
 }
 
+/**
+ * TWSE「證券商」欄常見為四碼純數字（5831），亦常見數字三位 + 英數第四位（538A / 102A）。
+ * 舊版只認純數字四碼，會整列丢棄導致彙總嚴重缺量、名次與對照網頁對不起來。
+ */
 function parseBranchCell(cell: string): { code?: string; name?: string } {
   const raw = cell.replace(/\s+/g, ' ').trim()
   if (!raw) return {}
-  const code = raw.slice(0, 4).match(/^\d{4}$/) ? raw.slice(0, 4) : undefined
-  const name = code ? raw.slice(4).trim().replace(/\s+/g, '') : undefined
+
+  const parts = raw.split(/\s+/).filter(Boolean)
+  const token = parts[0]
+  if (!token) return {}
+
+  const normalized = token.toUpperCase()
+  /** 四位純數字，或三位數末尾再接一個英文字母（證交所常見分店代號如 538A / 102A） */
+  const code =
+    /^[0-9]{4}$/.test(normalized) || /^[0-9]{3}[A-Z]$/.test(normalized) ? normalized : undefined
+  if (!code) return {}
+
+  const nameTail = parts.slice(1).join('')
+  const name = nameTail ? nameTail.replace(/\s+/g, '') : undefined
+
   return { code, name: name || undefined }
 }
 

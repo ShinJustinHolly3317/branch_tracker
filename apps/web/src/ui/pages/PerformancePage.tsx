@@ -1,28 +1,33 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { api } from '../api'
-import type { BranchPerformanceResponse, PerformanceMetric } from '@twbbd/shared'
+import { useDashboardTabCache } from '../DashboardTabCache'
+import type { PerformanceMetric } from '@twbbd/shared'
 
 export function PerformancePage() {
-  const [days, setDays] = useState(20)
-  const [forwardDays, setForwardDays] = useState(10)
-  const [minSample, setMinSample] = useState(10)
-  const [metric, setMetric] = useState<PerformanceMetric>('avgForwardReturn')
-  const [data, setData] = useState<BranchPerformanceResponse | null>(null)
+  const { performanceTab, setPerformanceTab } = useDashboardTabCache()
+  const navigate = useNavigate()
+  const { days, forwardDays, minSample, metric, data, hint } = performanceTab
+
   const [loading, setLoading] = useState(false)
-  const [hint, setHint] = useState<string | null>(null)
 
   async function run() {
-    setHint(null)
     setLoading(true)
     try {
       const resp = await api.performance(days, forwardDays, metric, minSample)
-      setData(resp)
-      if (!resp.top.length) {
-        setHint('這組條件暫時算不出排行；試著調低最小樣本、縮短前瞻 K，或累積更多交易日後再試。')
-      }
+      setPerformanceTab((s) => ({
+        ...s,
+        data: resp,
+        hint: !resp.top.length
+          ? '這組條件暫時算不出排行；試著調低最小樣本、縮短前瞻 K，或累積更多交易日後再試。'
+          : null
+      }))
     } catch {
-      setData(null)
-      setHint('連線或計算異常，請確認 API 與 Postgres 資料是否就緒。')
+      setPerformanceTab((s) => ({
+        ...s,
+        data: null,
+        hint: '連線或計算異常，請確認 API 與 Postgres 資料是否就緒。'
+      }))
     } finally {
       setLoading(false)
     }
@@ -35,12 +40,21 @@ export function PerformancePage() {
         ? '勝率'
         : '加權報酬 proxy'
 
+  /** Branch 頁 deeplink：`BranchPage` 會帶 keyword + 自動打 byBranch API */
+  function branchSearchPath(branchId: string, branchName: string | undefined) {
+    const sp = new URLSearchParams()
+    sp.set('branchId', branchId)
+    const name = (branchName || '').trim()
+    if (name) sp.set('branchName', name)
+    return `/branch?${sp.toString()}`
+  }
+
   return (
     <div className="card">
       <div className="page-intro">
         <h2 className="page-title">Branch Performance</h2>
         <p className="muted" style={{ margin: '6px 0 0' }}>
-          用「分點淨買事件」做簡單回測：回溯 \(N\) 個交易日、往前看 \(K\) 個交易日的報酬表現。
+          用「分點淨買事件」做簡單回測：回溯 N 個交易日、往前看 K 個交易日的報酬表現。
         </p>
 
         <div className="info-grid" style={{ marginTop: 14 }}>
@@ -80,7 +94,9 @@ export function PerformancePage() {
             min={1}
             max={365}
             value={days}
-            onChange={(e) => setDays(Number(e.target.value))}
+            onChange={(e) =>
+              setPerformanceTab((s) => ({ ...s, days: Number(e.target.value) }))
+            }
           />
         </div>
         <div className="field">
@@ -90,12 +106,22 @@ export function PerformancePage() {
             min={1}
             max={120}
             value={forwardDays}
-            onChange={(e) => setForwardDays(Number(e.target.value))}
+            onChange={(e) =>
+              setPerformanceTab((s) => ({ ...s, forwardDays: Number(e.target.value) }))
+            }
           />
         </div>
         <div className="field">
           <span className="field-label">指標</span>
-          <select value={metric} onChange={(e) => setMetric(e.target.value as PerformanceMetric)}>
+          <select
+            value={metric}
+            onChange={(e) =>
+              setPerformanceTab((s) => ({
+                ...s,
+                metric: e.target.value as PerformanceMetric
+              }))
+            }
+          >
             <option value="avgForwardReturn">平均前瞻報酬</option>
             <option value="hitRate">勝率</option>
             <option value="weightedPnlProxy">加權報酬 proxy</option>
@@ -108,7 +134,12 @@ export function PerformancePage() {
             min={1}
             max={500}
             value={minSample}
-            onChange={(e) => setMinSample(Number(e.target.value))}
+            onChange={(e) =>
+              setPerformanceTab((s) => ({
+                ...s,
+                minSample: Number(e.target.value)
+              }))
+            }
           />
         </div>
         <div className="field">
@@ -127,10 +158,28 @@ export function PerformancePage() {
 
       {hint ? <div className="hint-soft">{hint}</div> : null}
 
+      {data?.debugMessage ? <div className="hint-warn">{data.debugMessage}</div> : null}
+
+      {data && data.reasonCode && data.top.length === 0 ? (
+        <div className="muted" style={{ marginTop: 12 }}>
+          診斷：<span className="mono">{data.reasonCode}</span>
+          {typeof data.effectiveForwardTradingDays === 'number' &&
+          typeof data.requestedForwardTradingDays === 'number' ? (
+            <>
+              {' '}
+              · 前瞻 K：請求 {data.requestedForwardTradingDays} / 實際 {data.effectiveForwardTradingDays}
+            </>
+          ) : null}
+        </div>
+      ) : null}
+
       {data && data.top.length > 0 ? (
         <>
           <div className="muted" style={{ marginTop: 16 }}>
             參考區間：{data.startDate} → {data.endDate}
+            <span style={{ marginLeft: 8 }} className="performance-table-hint">
+              （點整列可到 Branch 並帶入該分點查詢）
+            </span>
           </div>
           <table>
             <thead>
@@ -141,19 +190,45 @@ export function PerformancePage() {
               </tr>
             </thead>
             <tbody>
-              {data.top.map((r) => (
-                <tr key={r.branchId}>
-                  <td>{r.branchName || r.branchId}</td>
-                  <td>{r.sampleSize}</td>
-                  <td>
-                    {metric === 'hitRate'
-                      ? `${(r.value * 100).toFixed(1)}%`
-                      : metric === 'avgForwardReturn'
-                        ? `${(r.value * 100).toFixed(2)}%`
-                        : r.value.toFixed(0)}
-                  </td>
-                </tr>
-              ))}
+              {data.top.map((r) => {
+                const to = branchSearchPath(r.branchId, r.branchName)
+                const label = r.branchName || r.branchId
+                return (
+                  <tr
+                    key={r.branchId}
+                    className="performance-branch-row"
+                    role="link"
+                    tabIndex={0}
+                    title="前往 Branch 並查詢此分點持股"
+                    aria-label={`Branch：${label}`}
+                    onClick={() => navigate(to)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        navigate(to)
+                      }
+                    }}
+                    onAuxClick={(e) => {
+                      if (e.button === 1) {
+                        e.preventDefault()
+                        window.open(to, '_blank', 'noopener,noreferrer')
+                      }
+                    }}
+                  >
+                    <td>
+                      <span className="performance-branch-link">{label}</span>
+                    </td>
+                    <td>{r.sampleSize}</td>
+                    <td>
+                      {metric === 'hitRate'
+                        ? `${(r.value * 100).toFixed(1)}%`
+                        : metric === 'avgForwardReturn'
+                          ? `${(r.value * 100).toFixed(2)}%`
+                          : r.value.toFixed(0)}
+                    </td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         </>

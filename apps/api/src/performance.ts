@@ -15,9 +15,18 @@ export async function computeBranchPerformance(params: {
   forwardTradingDays: number
   metric: PerformanceMetric
   minSampleSize: number
+  requestedForwardTradingDays: number
 }): Promise<BranchPerformanceResponse> {
-  const { db, datesAll, endDate, tradingDays, forwardTradingDays, metric, minSampleSize } =
-    params
+  const {
+    db,
+    datesAll,
+    endDate,
+    tradingDays,
+    forwardTradingDays,
+    metric,
+    minSampleSize,
+    requestedForwardTradingDays
+  } = params
 
   const endIdx = datesAll.lastIndexOf(endDate)
   if (endIdx === -1) {
@@ -28,7 +37,10 @@ export async function computeBranchPerformance(params: {
       forwardTradingDays,
       metric,
       minSampleSize,
-      top: []
+      top: [],
+      reasonCode: 'computed',
+      requestedForwardTradingDays,
+      effectiveForwardTradingDays: forwardTradingDays
     }
   }
 
@@ -118,7 +130,16 @@ export async function computeBranchPerformance(params: {
     forwardTradingDays,
     metric,
     minSampleSize,
-    top: rows
+    top: rows,
+    reasonCode: 'computed',
+    requestedForwardTradingDays,
+    effectiveForwardTradingDays: forwardTradingDays,
+    ...(rows.length === 0
+      ? {
+          debugMessage:
+            '已選定 endDate，但樣本不足（常見原因：資料庫交易日曆太短、對應 K 日以後缺少收盤價 stock_close、或 minSample 太大）。可先試降低最小樣本或縮短 K。'
+        }
+      : {})
   }
 }
 

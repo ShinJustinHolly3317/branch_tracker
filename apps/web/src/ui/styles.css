@@ -242,6 +242,38 @@ tbody tr:hover {
   font-size: 13px;
 }
 
+.mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New',
+    monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+.performance-branch-row {
+  cursor: pointer;
+}
+
+.performance-branch-row:focus-visible {
+  outline: 2px solid rgba(13, 148, 136, 0.55);
+  outline-offset: -2px;
+}
+
+.performance-branch-row:hover .performance-branch-link {
+  text-decoration: underline;
+}
+
+.performance-table-hint {
+  opacity: 0.85;
+}
+
+.performance-branch-link {
+  color: var(--color-nav-active);
+  text-decoration: none;
+}
+
+.performance-branch-link:hover {
+  text-decoration: underline;
+}
+
 .hint-soft {
   margin-top: 14px;
   padding: 12px 14px;

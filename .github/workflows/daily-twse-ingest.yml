@@ -1,0 +1,54 @@
+name: Daily TWSE ingest（寫入 Supabase Postgres）
+
+on:
+  schedule:
+    # 週一至週五 10:00 UTC ≒ 台北 18:00（DST 不適用於台灣）
+    - cron: '0 10 * * 1-5'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-ingest-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+
+    env:
+      # 必填：請在 Repo → Settings → Secrets and variables → Actions 設定 DATABASE_URL
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      TWSE_STOCKS: all
+      TW_STOCK_UNIVERSE: twse
+      DEBUG_INGEST: '0'
+      INGEST_MS_BETWEEN_STOCKS: '350'
+
+    steps:
+      - name: 檢查 DATABASE_URL（避免誤以為成功但未寫庫）
+        run: |
+          if [ -z "${DATABASE_URL}" ]; then
+            echo "::error::缺少 GitHub Actions secret DATABASE_URL（Supabase Postgres 連線字串／Transaction pool）。"
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: npm ci（workspace）
+        run: npm ci
+
+      - name: Build shared + ingester
+        run: |
+          npm run -w @twbbd/shared build
+          npm run -w @twbbd/ingester build
+
+      - name: ingest:once（TWSE bsContent）
+        run: npm run -w @twbbd/ingester ingest:once

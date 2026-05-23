@@ -1,4 +1,5 @@
 import { NavLink, Route, Routes } from 'react-router-dom'
+import { DashboardTabCacheProvider } from './DashboardTabCache'
 import { StockPage } from './pages/StockPage'
 import { BranchPage } from './pages/BranchPage'
 import { PerformancePage } from './pages/PerformancePage'
@@ -6,6 +7,7 @@ import { StatusBar } from './components/StatusBar'
 
 export function App() {
   return (
+    <DashboardTabCacheProvider>
     <div className="container">
       <header className="app-header">
         <h1 className="app-title">TW Broker-Branch Dashboard</h1>
@@ -30,6 +32,7 @@ export function App() {
         <Route path="/performance" element={<PerformancePage />} />
       </Routes>
     </div>
+    </DashboardTabCacheProvider>
   )
 }
 

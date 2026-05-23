@@ -1,5 +1,7 @@
 # Terraform（阶段性：DNS / Pages 網域）
 
+若你的主線改成 **Supabase + GitHub Actions + Netlify／Vercel**（無 Cloudflare／無自託管 DNS），可略過這裡並改讀：**`docs/deploy-zero-cost.md`**。
+
 這個資料夾用 **[Terraform](https://www.terraform.io/)** 管理 **Cloudflare** 上與本專案部署計畫直接相關、且 **API 完整** 的資源：
 
 - **DNS 記錄**（例如 `api` → PaaS CNAME、`dash` → Pages）
