@@ -1,10 +1,11 @@
 name: Daily TWSE ingest（寫入 Supabase Postgres）
-
+# 已改用 Render Cron Job（render.yaml），此 workflow 暫停
+# on:
+#   schedule:
+#     - cron: '0 10 * * 1-5'
+#   workflow_dispatch: {}
 on:
-  schedule:
-    # 週一至週五 10:00 UTC ≒ 台北 18:00（DST 不適用於台灣）
-    - cron: '0 10 * * 1-5'
-  workflow_dispatch: {}
+  workflow_dispatch: {}  # 只保留手動觸發，供緊急補跑用
 
 permissions:
   contents: read

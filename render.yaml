@@ -1,0 +1,21 @@
+services:
+  - type: cron
+    name: twbbd-ingester
+    runtime: node
+    region: singapore  # 新加坡最接近 TWSE（台灣），降低 RTT
+    schedule: "0 10 * * 1-5"  # UTC 10:00 = 台北 18:00，週一至週五
+    buildCommand: npm ci && npm run -w @twbbd/shared build && npm run -w @twbbd/ingester build
+    startCommand: npm run -w @twbbd/ingester ingest:once
+    envVars:
+      - key: DATABASE_URL
+        sync: false  # 在 Render Dashboard 手動填入 Supabase 連線字串
+      - key: TWSE_STOCKS
+        value: all
+      - key: TW_STOCK_UNIVERSE
+        value: twse
+      - key: DEBUG_INGEST
+        value: "0"
+      - key: INGEST_MS_BETWEEN_STOCKS
+        value: "0"
+      - key: INGEST_CONCURRENCY
+        value: "15"
