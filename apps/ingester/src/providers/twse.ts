@@ -144,7 +144,7 @@ function parseBsContentHtml(html: string, stockId: string): ParsedPage {
   }
 }
 
-/** 同一 RecCount 下 empty body 短暫重試 */
+/** 同一 RecCount 下 empty body 短暫重試；403 rate-limit 時退避重試 */
 async function fetchHtmlWithBackoff(stockId: string, recCount: number): Promise<string> {
   const url = buildBsContentUrl(stockId, recCount)
   let lastStatus = 0
@@ -161,6 +161,15 @@ async function fetchHtmlWithBackoff(stockId: string, recCount: number): Promise<
       }
     })
     lastStatus = res.status
+
+    if (res.status === 403) {
+      // TWSE rate limit：等待後重試（1s → 3s → 9s）
+      if (attempt < 3) {
+        await new Promise((r) => setTimeout(r, 1000 * 3 ** (attempt - 1)))
+        continue
+      }
+      throw new Error(`twse_fetch_failed stockId=${stockId} status=403 RecCount=${recCount}`)
+    }
 
     if (!res.ok) {
       throw new Error(`twse_fetch_failed stockId=${stockId} status=${res.status} RecCount=${recCount}`)

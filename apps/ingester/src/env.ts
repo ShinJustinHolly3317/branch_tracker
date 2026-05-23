@@ -24,8 +24,8 @@ const EnvSchema = z.object({
     .transform((s) => s === '1' || (s ?? '').toLowerCase() === 'true'),
   /** 每檔股票請求後休眠毫秒數（避免塞爆 TWSE） */
   INGEST_MS_BETWEEN_STOCKS: z.coerce.number().int().min(0).max(60000).default(350),
-  /** 同時爬幾支股票（並行數），預設 5，上限 20 */
-  INGEST_CONCURRENCY: z.coerce.number().int().min(1).max(20).default(5),
+  /** 同時爬幾支股票（並行數），預設 3，上限 20 */
+  INGEST_CONCURRENCY: z.coerce.number().int().min(1).max(20).default(3),
   /** 排程表達式（node-cron），預設週一至週五 18:00 台灣時間 */
   INGEST_CRON: z.string().default('0 18 * * 1-5'),
   /** IANA 時區，須與 INGEST_CRON 搭配 */
