@@ -6,7 +6,7 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "npm run -w @twbbd/web dev",
+    "sync:supabase": "node scripts/sync-to-supabase.mjs",
     "dev:api": "npm run -w @twbbd/api dev",
     "dev:ingest": "npm run -w @twbbd/ingester ingest:once",
     "ingest:local": "npm run -w @twbbd/shared build && npm run -w @twbbd/ingester build && DATABASE_URL=postgres://twbbd:twbbd@localhost:5432/twbbd TWSE_STOCKS=all TW_STOCK_UNIVERSE=twse DEBUG_INGEST=0 npm run -w @twbbd/ingester ingest:once",
