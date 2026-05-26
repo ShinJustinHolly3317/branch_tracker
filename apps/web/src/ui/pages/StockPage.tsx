@@ -3,9 +3,16 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { api } from '../api'
 import { useDashboardTabCache } from '../DashboardTabCache'
 import type { StockSuggestion } from '@twbbd/shared'
-import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts'
+import { InteractivePieChart } from '../components/InteractivePieChart'
 
-const PIE_COLORS = ['#0f9b8e', '#14b8a6', '#2dd4bf', '#5eead4', '#99f6e4', '#0d8177', '#0f5952', '#134e4a', '#5ebfb5', '#d5f5f0']
+/** Branch 頁 deeplink：與 Performance 排行榜同款 `branchId` / `branchName` */
+function branchSearchPath(branchId: string, branchName: string | undefined) {
+  const sp = new URLSearchParams()
+  sp.set('branchId', branchId)
+  const name = (branchName || '').trim()
+  if (name) sp.set('branchName', name)
+  return `/branch?${sp.toString()}`
+}
 
 export function StockPage() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -42,11 +49,14 @@ export function StockPage() {
     return () => window.clearTimeout(handle)
   }, [query])
 
-  const pieData = useMemo(() => {
+  const pieSegments = useMemo(() => {
     if (!data?.branches?.length) return []
     return data.branches.slice(0, 10).map((b) => ({
-      name: b.branchName || b.branchId,
-      value: Math.abs(b.netShares)
+      id: b.branchId,
+      label: b.branchName || b.branchId,
+      value: Math.abs(b.netShares),
+      navigateTo: branchSearchPath(b.branchId, b.branchName),
+      actionLabel: '前往分點'
     }))
   }, [data])
 
@@ -176,15 +186,6 @@ export function StockPage() {
   ])
 
   const showDropdown = openSuggest && suggestions.length > 0
-
-  /** Branch 頁 deeplink：與 Performance 排行榜同款 `branchId` / `branchName` */
-  function branchSearchPath(branchId: string, branchName: string | undefined) {
-    const sp = new URLSearchParams()
-    sp.set('branchId', branchId)
-    const name = (branchName || '').trim()
-    if (name) sp.set('branchName', name)
-    return `/branch?${sp.toString()}`
-  }
 
   return (
     <div className="grid2">
@@ -322,22 +323,8 @@ export function StockPage() {
         <div className="chart-wrap">
           {loading ? (
             <div className="chart-empty">載入中…</div>
-          ) : pieData.length > 0 ? (
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie dataKey="value" data={pieData} nameKey="name" outerRadius={130} paddingAngle={1}>
-                  {pieData.map((_, i) => (
-                    <Cell key={String(i)} fill={PIE_COLORS[i % PIE_COLORS.length]} stroke="var(--color-bg-card)" />
-                  ))}
-                </Pie>
-                <Tooltip
-                  contentStyle={{
-                    borderRadius: 10,
-                    border: '1px solid rgba(15,155,142,0.22)'
-                  }}
-                />
-              </PieChart>
-            </ResponsiveContainer>
+          ) : pieSegments.length > 0 ? (
+            <InteractivePieChart segments={pieSegments} />
           ) : (
             <div className="chart-empty">
               尚無可視覺化的分點資料。
