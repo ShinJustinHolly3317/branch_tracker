@@ -319,7 +319,7 @@ export function StockPage() {
 
       <div className="card chart-card">
         <h3 className="chart-title">分點集中度（依淨額絕對值）</h3>
-        <p className="muted chart-caption">圓餅圖為前十名分點。</p>
+        <p className="muted chart-caption">圓餅圖為前十名分點；hover 可點擊前往 Branch 查詢。</p>
         <div className="chart-wrap">
           {loading ? (
             <div className="chart-empty">載入中…</div>

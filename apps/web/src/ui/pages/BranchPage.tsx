@@ -3,9 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { api } from '../api'
 import { useDashboardTabCache } from '../DashboardTabCache'
 import type { BranchSuggestion } from '@twbbd/shared'
-import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
-
-const BAR_FILL = '#0f9b8e'
+import { InteractivePieChart } from '../components/InteractivePieChart'
 
 export function BranchPage() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -114,11 +112,23 @@ export function BranchPage() {
     return () => window.clearTimeout(handle)
   }, [query])
 
-  const chartData = useMemo(() => {
+  /** Stock 頁 deeplink：`/?stockId=` */
+  function stockSearchPath(stockId: string, stockName: string | undefined) {
+    const sp = new URLSearchParams()
+    sp.set('stockId', stockId)
+    const n = stockName?.trim()
+    if (n) sp.set('stockName', n)
+    return `/?${sp.toString()}`
+  }
+
+  const pieSegments = useMemo(() => {
     if (!data?.stocks?.length) return []
     return data.stocks.slice(0, 10).map((s) => ({
+      id: s.stockId,
       label: s.stockName ? `${s.stockId} ${s.stockName}` : s.stockId,
-      net: s.netShares
+      value: Math.abs(s.netShares),
+      navigateTo: stockSearchPath(s.stockId, s.stockName),
+      actionLabel: '前往股票'
     }))
   }, [data])
 
@@ -157,15 +167,6 @@ export function BranchPage() {
   }
 
   const showDropdown = openSuggest && suggestions.length > 0
-
-  /** Stock 頁 deeplink：`/?stockId=` */
-  function stockSearchPath(stockId: string, stockName: string | undefined) {
-    const sp = new URLSearchParams()
-    sp.set('stockId', stockId)
-    const n = stockName?.trim()
-    if (n) sp.set('stockName', n)
-    return `/?${sp.toString()}`
-  }
 
   return (
     <div className="grid2">
@@ -297,30 +298,12 @@ export function BranchPage() {
 
       <div className="card chart-card">
         <h3 className="chart-title">主力持股（淨額 Top 10）</h3>
-        <p className="muted chart-caption">長條圖為淨額；僅顯示前十名。</p>
+        <p className="muted chart-caption">圓餅圖為淨額前十名；hover 可點擊前往 Stock 查詢。</p>
         <div className="chart-wrap">
           {loading ? (
             <div className="chart-empty">載入中…</div>
-          ) : chartData.length > 0 ? (
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartData} layout="vertical" margin={{ left: 8, right: 16, top: 8 }}>
-                <XAxis type="number" stroke="#5a726f" tick={{ fill: '#5a726f', fontSize: 12 }} />
-                <YAxis
-                  type="category"
-                  dataKey="label"
-                  width={160}
-                  stroke="#5a726f"
-                  tick={{ fill: '#5a726f', fontSize: 12 }}
-                />
-                <Tooltip
-                  contentStyle={{
-                    borderRadius: 10,
-                    border: '1px solid rgba(15,155,142,0.22)'
-                  }}
-                />
-                <Bar dataKey="net" fill={BAR_FILL} radius={[0, 6, 6, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+          ) : pieSegments.length > 0 ? (
+            <InteractivePieChart segments={pieSegments} />
           ) : (
             <div className="chart-empty">
               選定分點並查詢後，此處會顯示淨額前十名股票。
