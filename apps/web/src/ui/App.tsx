@@ -1,5 +1,6 @@
 import { NavLink, Route, Routes } from 'react-router-dom'
 import { DashboardTabCacheProvider } from './DashboardTabCache'
+import { HomePage } from './HomePage'
 import { StockPage } from './pages/StockPage'
 import { BranchPage } from './pages/BranchPage'
 import { PerformancePage } from './pages/PerformancePage'
@@ -20,14 +21,15 @@ export function App() {
 
       <nav className="nav">
         <NavLink to="/" end>
-          Stock
+          Performance
         </NavLink>
+        <NavLink to="/stock">Stock</NavLink>
         <NavLink to="/branch">Branch</NavLink>
-        <NavLink to="/performance">Performance</NavLink>
       </nav>
 
       <Routes>
-        <Route path="/" element={<StockPage />} />
+        <Route path="/" element={<HomePage />} />
+        <Route path="/stock" element={<StockPage />} />
         <Route path="/branch" element={<BranchPage />} />
         <Route path="/performance" element={<PerformancePage />} />
       </Routes>

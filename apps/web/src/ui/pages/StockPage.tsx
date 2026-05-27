@@ -130,7 +130,7 @@ export function StockPage() {
     await loadStockById(stockId)
   }
 
-  // ① `/?stockId=` 深連結 ② 首訪且無快取：預設 2330；有快取則不再自動打 API
+  // ① `/stock?stockId=` 深連結 ② 首訪且無快取：預設 2330；有快取則不再自動打 API
   useEffect(() => {
     const idRaw = searchParams.get('stockId')?.trim()
     if (idRaw) {

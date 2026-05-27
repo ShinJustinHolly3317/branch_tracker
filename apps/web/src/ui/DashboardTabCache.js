@@ -28,7 +28,8 @@ export function DashboardTabCacheProvider({ children }) {
     const [branchTab, setBranchTab] = useState(defaultBranch);
     const [performanceTab, setPerformanceTab] = useState(defaultPerf);
     const stockDefaultBootstrapFired = useRef(false);
-    const bootstrapRefs = useMemo(() => ({ stockDefaultBootstrapFired }), []);
+    const perfDefaultBootstrapFired = useRef(false);
+    const bootstrapRefs = useMemo(() => ({ stockDefaultBootstrapFired, perfDefaultBootstrapFired }), []);
     const value = useMemo(() => ({
         stockTab,
         setStockTab,

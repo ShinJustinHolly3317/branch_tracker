@@ -1,20 +1,43 @@
-import { useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../api'
 import { useDashboardTabCache } from '../DashboardTabCache'
 import type { PerformanceMetric } from '@twbbd/shared'
 
 export function PerformancePage() {
-  const { performanceTab, setPerformanceTab } = useDashboardTabCache()
+  const { performanceTab, setPerformanceTab, bootstrapRefs } = useDashboardTabCache()
   const navigate = useNavigate()
   const { days, forwardDays, minSample, metric, data, hint } = performanceTab
 
   const [loading, setLoading] = useState(false)
 
-  async function run() {
+  const daysRef = useRef(days)
+  const forwardDaysRef = useRef(forwardDays)
+  const minSampleRef = useRef(minSample)
+  const metricRef = useRef(metric)
+
+  useEffect(() => {
+    daysRef.current = days
+  }, [days])
+  useEffect(() => {
+    forwardDaysRef.current = forwardDays
+  }, [forwardDays])
+  useEffect(() => {
+    minSampleRef.current = minSample
+  }, [minSample])
+  useEffect(() => {
+    metricRef.current = metric
+  }, [metric])
+
+  const runPerformance = useCallback(async () => {
     setLoading(true)
     try {
-      const resp = await api.performance(days, forwardDays, metric, minSample)
+      const resp = await api.performance(
+        daysRef.current,
+        forwardDaysRef.current,
+        metricRef.current,
+        minSampleRef.current
+      )
       setPerformanceTab((s) => ({
         ...s,
         data: resp,
@@ -31,7 +54,15 @@ export function PerformancePage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [setPerformanceTab])
+
+  /** 首訪自動計算；有快取結果則不重打（切換分頁回來保留） */
+  useEffect(() => {
+    if (performanceTab.data != null || performanceTab.hint != null) return
+    if (bootstrapRefs.perfDefaultBootstrapFired.current) return
+    bootstrapRefs.perfDefaultBootstrapFired.current = true
+    void runPerformance()
+  }, [performanceTab.data, performanceTab.hint, bootstrapRefs, runPerformance])
 
   const metricLabel =
     metric === 'avgForwardReturn'
@@ -146,7 +177,7 @@ export function PerformancePage() {
           <span className="field-label" aria-hidden style={{ visibility: 'hidden' }}>
             —
           </span>
-          <button type="button" onClick={run} disabled={loading}>
+          <button type="button" onClick={() => void runPerformance()} disabled={loading}>
             {loading ? '計算中…' : '計算'}
           </button>
         </div>
@@ -155,6 +186,8 @@ export function PerformancePage() {
       <p className="muted" style={{ marginTop: 14 }}>
         依分點淨買事件計算 {metricLabel}；需要有足夠交易日與「前瞻 K 日」收盤價資料。
       </p>
+
+      {loading && !data ? <div className="hint-soft">載入排行中…</div> : null}
 
       {hint ? <div className="hint-soft">{hint}</div> : null}
 

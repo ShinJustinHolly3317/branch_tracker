@@ -112,13 +112,13 @@ export function BranchPage() {
     return () => window.clearTimeout(handle)
   }, [query])
 
-  /** Stock 頁 deeplink：`/?stockId=` */
+  /** Stock 頁 deeplink：`/stock?stockId=` */
   function stockSearchPath(stockId: string, stockName: string | undefined) {
     const sp = new URLSearchParams()
     sp.set('stockId', stockId)
     const n = stockName?.trim()
     if (n) sp.set('stockName', n)
-    return `/?${sp.toString()}`
+    return `/stock?${sp.toString()}`
   }
 
   const pieSegments = useMemo(() => {

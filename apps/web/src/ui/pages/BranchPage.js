@@ -101,14 +101,14 @@ export function BranchPage() {
         }, 280);
         return () => window.clearTimeout(handle);
     }, [query]);
-    /** Stock 頁 deeplink：`/?stockId=` */
+    /** Stock 頁 deeplink：`/stock?stockId=` */
     function stockSearchPath(stockId, stockName) {
         const sp = new URLSearchParams();
         sp.set('stockId', stockId);
         const n = stockName?.trim();
         if (n)
             sp.set('stockName', n);
-        return `/?${sp.toString()}`;
+        return `/stock?${sp.toString()}`;
     }
     const pieSegments = useMemo(() => {
         if (!data?.stocks?.length)

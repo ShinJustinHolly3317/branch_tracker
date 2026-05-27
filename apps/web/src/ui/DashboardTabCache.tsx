@@ -74,6 +74,8 @@ const defaultPerf: PerfTabSnapshot = {
 export type DashboardTabBootstrapRefs = {
   /** Stock：已觸發過「首屏自動查詢（預設 2330）」；避免離開後再進又打一次預設 */
   stockDefaultBootstrapFired: MutableRefObject<boolean>
+  /** Performance：首屏自動計算排行 */
+  perfDefaultBootstrapFired: MutableRefObject<boolean>
 }
 
 type DashboardTabCacheValue = {
@@ -94,9 +96,10 @@ export function DashboardTabCacheProvider({ children }: { children: ReactNode })
   const [performanceTab, setPerformanceTab] = useState<PerfTabSnapshot>(defaultPerf)
 
   const stockDefaultBootstrapFired = useRef(false)
+  const perfDefaultBootstrapFired = useRef(false)
 
   const bootstrapRefs: DashboardTabBootstrapRefs = useMemo(
-    () => ({ stockDefaultBootstrapFired }),
+    () => ({ stockDefaultBootstrapFired, perfDefaultBootstrapFired }),
     []
   )
 

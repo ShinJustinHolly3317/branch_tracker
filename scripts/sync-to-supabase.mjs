@@ -2,24 +2,66 @@
 /**
  * 本機 Postgres → Supabase 資料同步腳本
  *
- * 使用方式：
- *   SOURCE_DB_URL=postgres://twbbd:twbbd@localhost:5432/twbbd \
- *   TARGET_DB_URL=postgresql://postgres.[ref]:[pw]@[region].pooler.supabase.com:6543/postgres?sslmode=require \
- *   node scripts/sync-to-supabase.mjs
+ * 使用方式（專案根目錄）：
+ *   npm run sync:supabase
+ *
+ * 預設：
+ *   - source：本機 docker postgres（或 .env / SOURCE_DB_URL）
+ *   - target：.env 的 DATABASE_URL（Supabase）或 TARGET_DB_URL
  *
  * 重複資料處理：所有 table 均採 ON CONFLICT DO NOTHING（以 primary key 比對）。
  * 效能：每批一個 multi-row INSERT，避免逐筆 round-trip。
  */
 
+import { existsSync, readFileSync } from 'fs'
+import { dirname, join } from 'path'
+import { fileURLToPath } from 'url'
 import pg from 'pg'
 
 const { Pool } = pg
 
-const SOURCE_URL = process.env.SOURCE_DB_URL
-const TARGET_URL = process.env.TARGET_DB_URL
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
+const DEFAULT_SOURCE = 'postgres://twbbd:twbbd@localhost:5432/twbbd'
 
-if (!SOURCE_URL || !TARGET_URL) {
-  console.error('❌ 請設定 SOURCE_DB_URL 和 TARGET_DB_URL 環境變數')
+/** 讀取專案根目錄 .env（不覆蓋已存在的 process.env） */
+function loadEnvFile(path) {
+  if (!existsSync(path)) return {}
+  const out = {}
+  for (const line of readFileSync(path, 'utf8').split('\n')) {
+    const trimmed = line.trim()
+    if (!trimmed || trimmed.startsWith('#')) continue
+    const eq = trimmed.indexOf('=')
+    if (eq <= 0) continue
+    const key = trimmed.slice(0, eq).trim()
+    let val = trimmed.slice(eq + 1).trim()
+    if (
+      (val.startsWith('"') && val.endsWith('"')) ||
+      (val.startsWith("'") && val.endsWith("'"))
+    ) {
+      val = val.slice(1, -1)
+    }
+    out[key] = val
+  }
+  return out
+}
+
+const fileEnv = loadEnvFile(join(ROOT, '.env'))
+
+const SOURCE_URL =
+  process.env.SOURCE_DB_URL ?? fileEnv.SOURCE_DB_URL ?? DEFAULT_SOURCE
+const TARGET_URL =
+  process.env.TARGET_DB_URL ??
+  fileEnv.TARGET_DB_URL ??
+  process.env.DATABASE_URL ??
+  fileEnv.DATABASE_URL
+
+if (!TARGET_URL) {
+  console.error('❌ 找不到 target：請在 .env 設定 DATABASE_URL（Supabase），或設 TARGET_DB_URL')
+  process.exit(1)
+}
+
+if (SOURCE_URL === TARGET_URL) {
+  console.error('❌ source 與 target 相同，請確認 .env 的 DATABASE_URL 是 Supabase，本機用預設或 SOURCE_DB_URL')
   process.exit(1)
 }
 

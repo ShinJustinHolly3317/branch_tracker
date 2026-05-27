@@ -1,17 +1,33 @@
 import { jsx as _jsx, jsxs as _jsxs, Fragment as _Fragment } from "react/jsx-runtime";
-import { useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api';
 import { useDashboardTabCache } from '../DashboardTabCache';
 export function PerformancePage() {
-    const { performanceTab, setPerformanceTab } = useDashboardTabCache();
+    const { performanceTab, setPerformanceTab, bootstrapRefs } = useDashboardTabCache();
     const navigate = useNavigate();
     const { days, forwardDays, minSample, metric, data, hint } = performanceTab;
     const [loading, setLoading] = useState(false);
-    async function run() {
+    const daysRef = useRef(days);
+    const forwardDaysRef = useRef(forwardDays);
+    const minSampleRef = useRef(minSample);
+    const metricRef = useRef(metric);
+    useEffect(() => {
+        daysRef.current = days;
+    }, [days]);
+    useEffect(() => {
+        forwardDaysRef.current = forwardDays;
+    }, [forwardDays]);
+    useEffect(() => {
+        minSampleRef.current = minSample;
+    }, [minSample]);
+    useEffect(() => {
+        metricRef.current = metric;
+    }, [metric]);
+    const runPerformance = useCallback(async () => {
         setLoading(true);
         try {
-            const resp = await api.performance(days, forwardDays, metric, minSample);
+            const resp = await api.performance(daysRef.current, forwardDaysRef.current, metricRef.current, minSampleRef.current);
             setPerformanceTab((s) => ({
                 ...s,
                 data: resp,
@@ -30,7 +46,16 @@ export function PerformancePage() {
         finally {
             setLoading(false);
         }
-    }
+    }, [setPerformanceTab]);
+    /** 首訪自動計算；有快取結果則不重打（切換分頁回來保留） */
+    useEffect(() => {
+        if (performanceTab.data != null || performanceTab.hint != null)
+            return;
+        if (bootstrapRefs.perfDefaultBootstrapFired.current)
+            return;
+        bootstrapRefs.perfDefaultBootstrapFired.current = true;
+        void runPerformance();
+    }, [performanceTab.data, performanceTab.hint, bootstrapRefs, runPerformance]);
     const metricLabel = metric === 'avgForwardReturn'
         ? '平均前瞻報酬'
         : metric === 'hitRate'
@@ -51,7 +76,7 @@ export function PerformancePage() {
                                 })), children: [_jsx("option", { value: "avgForwardReturn", children: "\u5E73\u5747\u524D\u77BB\u5831\u916C" }), _jsx("option", { value: "hitRate", children: "\u52DD\u7387" }), _jsx("option", { value: "weightedPnlProxy", children: "\u52A0\u6B0A\u5831\u916C proxy" })] })] }), _jsxs("div", { className: "field", children: [_jsx("span", { className: "field-label", children: "\u6700\u5C0F\u6A23\u672C" }), _jsx("input", { type: "number", min: 1, max: 500, value: minSample, onChange: (e) => setPerformanceTab((s) => ({
                                     ...s,
                                     minSample: Number(e.target.value)
-                                })) })] }), _jsxs("div", { className: "field", children: [_jsx("span", { className: "field-label", "aria-hidden": true, style: { visibility: 'hidden' }, children: "\u2014" }), _jsx("button", { type: "button", onClick: run, disabled: loading, children: loading ? '計算中…' : '計算' })] })] }), _jsxs("p", { className: "muted", style: { marginTop: 14 }, children: ["\u4F9D\u5206\u9EDE\u6DE8\u8CB7\u4E8B\u4EF6\u8A08\u7B97 ", metricLabel, "\uFF1B\u9700\u8981\u6709\u8DB3\u5920\u4EA4\u6613\u65E5\u8207\u300C\u524D\u77BB K \u65E5\u300D\u6536\u76E4\u50F9\u8CC7\u6599\u3002"] }), hint ? _jsx("div", { className: "hint-soft", children: hint }) : null, data?.debugMessage ? _jsx("div", { className: "hint-warn", children: data.debugMessage }) : null, data && data.reasonCode && data.top.length === 0 ? (_jsxs("div", { className: "muted", style: { marginTop: 12 }, children: ["\u8A3A\u65B7\uFF1A", _jsx("span", { className: "mono", children: data.reasonCode }), typeof data.effectiveForwardTradingDays === 'number' &&
+                                })) })] }), _jsxs("div", { className: "field", children: [_jsx("span", { className: "field-label", "aria-hidden": true, style: { visibility: 'hidden' }, children: "\u2014" }), _jsx("button", { type: "button", onClick: () => void runPerformance(), disabled: loading, children: loading ? '計算中…' : '計算' })] })] }), _jsxs("p", { className: "muted", style: { marginTop: 14 }, children: ["\u4F9D\u5206\u9EDE\u6DE8\u8CB7\u4E8B\u4EF6\u8A08\u7B97 ", metricLabel, "\uFF1B\u9700\u8981\u6709\u8DB3\u5920\u4EA4\u6613\u65E5\u8207\u300C\u524D\u77BB K \u65E5\u300D\u6536\u76E4\u50F9\u8CC7\u6599\u3002"] }), loading && !data ? _jsx("div", { className: "hint-soft", children: "\u8F09\u5165\u6392\u884C\u4E2D\u2026" }) : null, hint ? _jsx("div", { className: "hint-soft", children: hint }) : null, data?.debugMessage ? _jsx("div", { className: "hint-warn", children: data.debugMessage }) : null, data && data.reasonCode && data.top.length === 0 ? (_jsxs("div", { className: "muted", style: { marginTop: 12 }, children: ["\u8A3A\u65B7\uFF1A", _jsx("span", { className: "mono", children: data.reasonCode }), typeof data.effectiveForwardTradingDays === 'number' &&
                         typeof data.requestedForwardTradingDays === 'number' ? (_jsxs(_Fragment, { children: [' ', "\u00B7 \u524D\u77BB K\uFF1A\u8ACB\u6C42 ", data.requestedForwardTradingDays, " / \u5BE6\u969B ", data.effectiveForwardTradingDays] })) : null] })) : null, data && data.top.length > 0 ? (_jsxs(_Fragment, { children: [_jsxs("div", { className: "muted", style: { marginTop: 16 }, children: ["\u53C3\u8003\u5340\u9593\uFF1A", data.startDate, " \u2192 ", data.endDate, _jsx("span", { style: { marginLeft: 8 }, className: "performance-table-hint", children: "\uFF08\u9EDE\u6574\u5217\u53EF\u5230 Branch \u4E26\u5E36\u5165\u8A72\u5206\u9EDE\u67E5\u8A62\uFF09" })] }), _jsxs("table", { children: [_jsx("thead", { children: _jsxs("tr", { children: [_jsx("th", { children: "\u5206\u9EDE" }), _jsx("th", { children: "\u6A23\u672C\u6578" }), _jsx("th", { children: "\u6578\u503C" })] }) }), _jsx("tbody", { children: data.top.map((r) => {
                                     const to = branchSearchPath(r.branchId, r.branchName);
                                     const label = r.branchName || r.branchId;
