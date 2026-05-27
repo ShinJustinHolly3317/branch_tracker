@@ -26,6 +26,16 @@ export type BranchAgg = {
   shareOfNetAbs: number
 }
 
+/** 個股區間價格表現（起訖收盤價） */
+export type StockPriceWindow = {
+  startDate: string
+  endDate: string
+  startClose: number
+  endClose: number
+  changeAmount: number
+  changePercent: number
+}
+
 export type ByStockWindowResponse = {
   stockId: string
   startDate: string
@@ -37,6 +47,8 @@ export type ByStockWindowResponse = {
     top3Share: number
     hhi: number
   }
+  /** 區間起訖收盤價與漲跌幅；缺資料時為 null */
+  priceWindow?: StockPriceWindow | null
 }
 
 export type ByBranchWindowRequest = {
@@ -125,6 +137,109 @@ export type BranchSuggestion = {
 
 export type BranchSuggestResponse = {
   suggestions: BranchSuggestion[]
+}
+
+/** 買入區間建議 */
+export type BuyZoneSuggestion = {
+  /** 理想買點下限（約 -2% 現價） */
+  lowPrice: number
+  /** 理想買點上限（約 +1% 現價） */
+  highPrice: number
+  /** 參考現價 */
+  referencePrice: number
+  /** 白話說明 */
+  summary: string
+}
+
+/** 分批買入建議 */
+export type BuyMethodSuggestion = {
+  style: '分批' | '一次'
+  steps: string[]
+  summary: string
+}
+
+/** 賣出條件 */
+export type ExitCondition = {
+  type: 'time' | 'stopLoss' | 'takeProfit' | 'signal'
+  label: string
+  detail: string
+}
+
+/** 策略快照（加入最愛時一併保存） */
+export type StrategySnapshot = {
+  strategyName: string
+  signalDate: string
+  buyZone: BuyZoneSuggestion
+  buyMethod: BuyMethodSuggestion
+  exitConditions: ExitCondition[]
+  watchItems: string[]
+  cautions: string[]
+  metrics?: {
+    momentum3d: number
+    turnover: number
+    netBuyRatio: number
+    top1Share: number
+  }
+}
+
+export type StockRecommendation = {
+  stockId: string
+  stockName: string
+  signalDate: string
+  referencePrice: number
+  confidence: 'high' | 'medium' | 'low'
+  score: number
+  momentum3d: number
+  turnover: number
+  netBuyRatio: number
+  top1Share: number
+  buyZone: BuyZoneSuggestion
+  buyMethod: BuyMethodSuggestion
+  exitConditions: ExitCondition[]
+  watchItems: string[]
+  cautions: string[]
+  strategySnapshot: StrategySnapshot
+}
+
+export type ShortTermRecommendationsResponse = {
+  strategyName: string
+  signalDate: string
+  generatedAt: string
+  disclaimer: string
+  items: StockRecommendation[]
+  debugMessage?: string
+}
+
+export type UserFavorite = {
+  id: string
+  clientId: string
+  stockId: string
+  stockName: string
+  addedAt: string
+  buyDate: string | null
+  buyPrice: number | null
+  notes: string | null
+  strategySnapshot: StrategySnapshot
+  updatedAt: string
+}
+
+export type FavoritesListResponse = {
+  items: UserFavorite[]
+}
+
+export type CreateFavoriteRequest = {
+  stockId: string
+  stockName: string
+  buyDate?: string | null
+  buyPrice?: number | null
+  notes?: string | null
+  strategySnapshot: StrategySnapshot
+}
+
+export type UpdateFavoriteRequest = {
+  buyDate?: string | null
+  buyPrice?: number | null
+  notes?: string | null
 }
 
 export const StorageKeys = {

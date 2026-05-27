@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../api'
+import { StockPriceSummary } from '../components/StockPriceSummary'
 import { useDashboardTabCache } from '../DashboardTabCache'
-import type { PerformanceMetric } from '@twbbd/shared'
+import type { PerformanceMetric, StockPriceWindow, StockSuggestion } from '@twbbd/shared'
 
 export function PerformancePage() {
   const { performanceTab, setPerformanceTab, bootstrapRefs } = useDashboardTabCache()
@@ -10,11 +11,20 @@ export function PerformancePage() {
   const { days, forwardDays, minSample, metric, data, hint } = performanceTab
 
   const [loading, setLoading] = useState(false)
+  const [stockQuery, setStockQuery] = useState('')
+  const [stockSelected, setStockSelected] = useState<StockSuggestion | null>(null)
+  const [stockSuggestions, setStockSuggestions] = useState<StockSuggestion[]>([])
+  const [openStockSuggest, setOpenStockSuggest] = useState(false)
+  const [stockHighlightIdx, setStockHighlightIdx] = useState(0)
+  const [stockPriceLoading, setStockPriceLoading] = useState(false)
+  const [stockPriceWindow, setStockPriceWindow] = useState<StockPriceWindow | null>(null)
+  const [stockPriceHint, setStockPriceHint] = useState<string | null>(null)
 
   const daysRef = useRef(days)
   const forwardDaysRef = useRef(forwardDays)
   const minSampleRef = useRef(minSample)
   const metricRef = useRef(metric)
+  const stockSuggestSeq = useRef(0)
 
   useEffect(() => {
     daysRef.current = days
@@ -28,6 +38,44 @@ export function PerformancePage() {
   useEffect(() => {
     metricRef.current = metric
   }, [metric])
+
+  useEffect(() => {
+    const q = stockQuery.trim()
+    const id = ++stockSuggestSeq.current
+    const handle = window.setTimeout(() => {
+      api
+        .stockSuggest(q, 40)
+        .then((r) => {
+          if (id !== stockSuggestSeq.current) return
+          setStockSuggestions(r.suggestions)
+          setStockHighlightIdx(0)
+        })
+        .catch(() => {
+          if (id !== stockSuggestSeq.current) return
+          setStockSuggestions([])
+        })
+    }, 220)
+    return () => window.clearTimeout(handle)
+  }, [stockQuery])
+
+  const loadStockPrice = useCallback(async (stockId: string) => {
+    setStockPriceLoading(true)
+    setStockPriceHint(null)
+    try {
+      const resp = await api.byStock(stockId, daysRef.current)
+      if (resp.priceWindow) {
+        setStockPriceWindow(resp.priceWindow)
+      } else {
+        setStockPriceWindow(null)
+        setStockPriceHint('此區間缺少起訖收盤價，無法計算漲跌幅。')
+      }
+    } catch {
+      setStockPriceWindow(null)
+      setStockPriceHint('連線異常，無法載入個股價格。')
+    } finally {
+      setStockPriceLoading(false)
+    }
+  }, [])
 
   const runPerformance = useCallback(async () => {
     setLoading(true)
@@ -45,6 +93,9 @@ export function PerformancePage() {
           ? '這組條件暫時算不出排行；試著調低最小樣本、縮短前瞻 K，或累積更多交易日後再試。'
           : null
       }))
+      if (stockSelected?.stockId) {
+        void loadStockPrice(stockSelected.stockId)
+      }
     } catch {
       setPerformanceTab((s) => ({
         ...s,
@@ -54,7 +105,7 @@ export function PerformancePage() {
     } finally {
       setLoading(false)
     }
-  }, [setPerformanceTab])
+  }, [setPerformanceTab, stockSelected?.stockId, loadStockPrice])
 
   /** 首訪自動計算；有快取結果則不重打（切換分頁回來保留） */
   useEffect(() => {
@@ -64,12 +115,27 @@ export function PerformancePage() {
     void runPerformance()
   }, [performanceTab.data, performanceTab.hint, bootstrapRefs, runPerformance])
 
+  /** 已選個股時，回溯 N 日變更後重算區間漲跌 */
+  useEffect(() => {
+    if (!stockSelected?.stockId) return
+    void loadStockPrice(stockSelected.stockId)
+  }, [days, stockSelected?.stockId, loadStockPrice])
+
   const metricLabel =
     metric === 'avgForwardReturn'
       ? '平均前瞻報酬'
       : metric === 'hitRate'
         ? '勝率'
         : '加權報酬 proxy'
+
+  function pickStockSuggestion(s: StockSuggestion) {
+    setStockSelected(s)
+    setStockQuery(`${s.stockId} ${s.stockName}`.trim())
+    setOpenStockSuggest(false)
+    void loadStockPrice(s.stockId)
+  }
+
+  const showStockDropdown = openStockSuggest && stockSuggestions.length > 0
 
   /** Branch 頁 deeplink：`BranchPage` 會帶 keyword + 自動打 byBranch API */
   function branchSearchPath(branchId: string, branchName: string | undefined) {
@@ -183,6 +249,72 @@ export function PerformancePage() {
         </div>
       </div>
 
+      <div className="row align-start" style={{ marginTop: 8 }}>
+        <div className="field suggest-wrap">
+          <span className="field-label">查個股區間漲跌（同回溯 N 日）</span>
+          <input
+            role="combobox"
+            aria-expanded={showStockDropdown}
+            aria-controls="perf-stock-suggest-list"
+            value={stockQuery}
+            placeholder="例如：2330、台積電…"
+            onChange={(e) => {
+              setStockQuery(e.target.value)
+              setStockSelected(null)
+              setStockPriceWindow(null)
+              setStockPriceHint(null)
+              setOpenStockSuggest(true)
+            }}
+            onFocus={() => setOpenStockSuggest(true)}
+            onBlur={() => window.setTimeout(() => setOpenStockSuggest(false), 180)}
+            onKeyDown={(e) => {
+              if (!showStockDropdown) return
+              if (e.key === 'ArrowDown') {
+                e.preventDefault()
+                setStockHighlightIdx((i) => Math.min(i + 1, stockSuggestions.length - 1))
+              } else if (e.key === 'ArrowUp') {
+                e.preventDefault()
+                setStockHighlightIdx((i) => Math.max(i - 1, 0))
+              } else if (e.key === 'Enter') {
+                e.preventDefault()
+                const s = stockSuggestions[stockHighlightIdx]
+                if (s) pickStockSuggestion(s)
+              } else if (e.key === 'Escape') {
+                setOpenStockSuggest(false)
+              }
+            }}
+          />
+          {showStockDropdown ? (
+            <ul id="perf-stock-suggest-list" className="suggest-list" role="listbox">
+              {stockSuggestions.map((s, i) => (
+                <li
+                  key={`${s.stockId}-${s.stockName}`}
+                  role="option"
+                  aria-selected={i === stockHighlightIdx}
+                  onMouseEnter={() => setStockHighlightIdx(i)}
+                  onMouseDown={(ev) => ev.preventDefault()}
+                  onClick={() => pickStockSuggestion(s)}
+                >
+                  <strong>
+                    <span className="mono">{s.stockId}</span> {s.stockName}
+                  </strong>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </div>
+      </div>
+
+      {stockPriceLoading ? <div className="hint-soft">載入個股價格中…</div> : null}
+      {stockPriceHint ? <div className="hint-soft">{stockPriceHint}</div> : null}
+      {stockSelected && stockPriceWindow ? (
+        <StockPriceSummary
+          stockId={stockSelected.stockId}
+          stockName={stockSelected.stockName}
+          priceWindow={stockPriceWindow}
+        />
+      ) : null}
+
       <p className="muted" style={{ marginTop: 14 }}>
         依分點淨買事件計算 {metricLabel}；需要有足夠交易日與「前瞻 K 日」收盤價資料。
       </p>
@@ -219,7 +351,7 @@ export function PerformancePage() {
               <tr>
                 <th>分點</th>
                 <th>樣本數</th>
-                <th>數值</th>
+                <th>{metricLabel}（績效）</th>
               </tr>
             </thead>
             <tbody>

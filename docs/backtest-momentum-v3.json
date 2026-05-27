@@ -1,0 +1,785 @@
+{
+  "strategy": "溫和動能 × 分點確認",
+  "generatedAt": "2026-05-27T12:40:34.277Z",
+  "dataRange": {
+    "start": "2026-04-30",
+    "end": "2026-05-27",
+    "tradingDays": 10
+  },
+  "params": {
+    "holdDays": 3,
+    "momLookback": 3,
+    "momentumRange": [
+      0.025,
+      0.07
+    ],
+    "antiChase": {
+      "maxSingleDay": 0.03,
+      "max3DaySum": 0.07
+    },
+    "minTurnover": 120000,
+    "minTop1Conc": 0.2,
+    "minNetRatio": 0.03,
+    "maxLastDayReturn": 0.02,
+    "liveHoldTargetDays": "15–20（實盤建議；回測因資料長度縮短）"
+  },
+  "filterStats": {
+    "mom": 471,
+    "chase": 79,
+    "blob": 79,
+    "turnover": 78,
+    "net": 35,
+    "conc": 18,
+    "pass": 18
+  },
+  "limitation": "資料庫僅含約 10 個交易日，無法做 1 年以上回測；以下為可用區間內的樣本外推參考，非正式長期驗證。",
+  "overall": {
+    "samples": 18,
+    "winRate": 0.4444444444444444,
+    "avgReturn": 0.003977456803250272
+  },
+  "hotPool": [
+    {
+      "stockId": "0050",
+      "stockName": "元大台灣50",
+      "samples": 0,
+      "winRate": null,
+      "avgReturn": null,
+      "hasData": false
+    },
+    {
+      "stockId": "2330",
+      "stockName": "台積電",
+      "samples": 0,
+      "winRate": null,
+      "avgReturn": null,
+      "hasData": false
+    },
+    {
+      "stockId": "2317",
+      "stockName": "鴻海",
+      "samples": 0,
+      "winRate": null,
+      "avgReturn": null,
+      "hasData": false
+    },
+    {
+      "stockId": "2454",
+      "stockName": "聯發科",
+      "samples": 0,
+      "winRate": null,
+      "avgReturn": null,
+      "hasData": false
+    },
+    {
+      "stockId": "2881",
+      "stockName": "富邦金",
+      "samples": 0,
+      "winRate": null,
+      "avgReturn": null,
+      "hasData": false
+    },
+    {
+      "stockId": "2303",
+      "stockName": "聯電",
+      "samples": 0,
+      "winRate": null,
+      "avgReturn": null,
+      "hasData": false
+    },
+    {
+      "stockId": "2382",
+      "stockName": "廣達",
+      "samples": 0,
+      "winRate": null,
+      "avgReturn": null,
+      "hasData": false
+    },
+    {
+      "stockId": "3231",
+      "stockName": "緯創",
+      "samples": 0,
+      "winRate": null,
+      "avgReturn": null,
+      "hasData": false
+    },
+    {
+      "stockId": "6669",
+      "stockName": "緯穎",
+      "samples": 0,
+      "winRate": null,
+      "avgReturn": null,
+      "hasData": false
+    },
+    {
+      "stockId": "3017",
+      "stockName": "奇鋐",
+      "samples": 0,
+      "winRate": null,
+      "avgReturn": null,
+      "hasData": false
+    }
+  ],
+  "perStock": [
+    {
+      "stockId": "1733",
+      "stockName": "五鼎",
+      "samples": 2,
+      "winRate": 1,
+      "avgReturn": 0.02567630064571271,
+      "events": [
+        {
+          "stockId": "1733",
+          "stockName": "五鼎",
+          "eventDate": "2026-05-18",
+          "forwardDate": "2026-05-26",
+          "holdDays": 3,
+          "entryClose": 29.15,
+          "exitClose": 30.05,
+          "forwardReturn": 0.030874785591766797,
+          "win": true,
+          "mom": 0.03368794326241132,
+          "turnover": 407880,
+          "top1Share": 0.3296728281381443
+        },
+        {
+          "stockId": "1733",
+          "stockName": "五鼎",
+          "eventDate": "2026-05-19",
+          "forwardDate": "2026-05-27",
+          "holdDays": 3,
+          "entryClose": 29.3,
+          "exitClose": 29.9,
+          "forwardReturn": 0.02047781569965863,
+          "win": true,
+          "mom": 0.03350970017636681,
+          "turnover": 505644,
+          "top1Share": 0.20102962127767435
+        }
+      ]
+    },
+    {
+      "stockId": "1460",
+      "stockName": "宏遠",
+      "samples": 1,
+      "winRate": 0,
+      "avgReturn": -0.030344827586206862,
+      "events": [
+        {
+          "stockId": "1460",
+          "stockName": "宏遠",
+          "eventDate": "2026-05-08",
+          "forwardDate": "2026-05-19",
+          "holdDays": 3,
+          "entryClose": 7.25,
+          "exitClose": 7.03,
+          "forwardReturn": -0.030344827586206862,
+          "win": false,
+          "mom": 0.038681948424068704,
+          "turnover": 3173960,
+          "top1Share": 0.24663395726373488
+        }
+      ]
+    },
+    {
+      "stockId": "1530",
+      "stockName": "亞崴",
+      "samples": 1,
+      "winRate": 1,
+      "avgReturn": 0.19780219780219788,
+      "events": [
+        {
+          "stockId": "1530",
+          "stockName": "亞崴",
+          "eventDate": "2026-05-19",
+          "forwardDate": "2026-05-27",
+          "holdDays": 3,
+          "entryClose": 27.3,
+          "exitClose": 32.7,
+          "forwardReturn": 0.19780219780219788,
+          "win": true,
+          "mom": 0.04198473282442754,
+          "turnover": 204136,
+          "top1Share": 0.49065787407756317
+        }
+      ]
+    },
+    {
+      "stockId": "1533",
+      "stockName": "車王電",
+      "samples": 1,
+      "winRate": 1,
+      "avgReturn": 0.020679468242245074,
+      "events": [
+        {
+          "stockId": "1533",
+          "stockName": "車王電",
+          "eventDate": "2026-05-08",
+          "forwardDate": "2026-05-19",
+          "holdDays": 3,
+          "entryClose": 33.85,
+          "exitClose": 34.55,
+          "forwardReturn": 0.020679468242245074,
+          "win": true,
+          "mom": 0.04153846153846158,
+          "turnover": 3379620,
+          "top1Share": 0.21077852553968981
+        }
+      ]
+    },
+    {
+      "stockId": "1537",
+      "stockName": "廣隆",
+      "samples": 1,
+      "winRate": 0,
+      "avgReturn": -0.003968253968253968,
+      "events": [
+        {
+          "stockId": "1537",
+          "stockName": "廣隆",
+          "eventDate": "2026-05-19",
+          "forwardDate": "2026-05-27",
+          "holdDays": 3,
+          "entryClose": 126,
+          "exitClose": 125.5,
+          "forwardReturn": -0.003968253968253968,
+          "win": false,
+          "mom": 0.02857142857142857,
+          "turnover": 206300,
+          "top1Share": 0.2860600726152492
+        }
+      ]
+    },
+    {
+      "stockId": "1808",
+      "stockName": "潤隆",
+      "samples": 1,
+      "winRate": 0,
+      "avgReturn": -0.01025641025641028,
+      "events": [
+        {
+          "stockId": "1808",
+          "stockName": "潤隆",
+          "eventDate": "2026-05-18",
+          "forwardDate": "2026-05-26",
+          "holdDays": 3,
+          "entryClose": 29.25,
+          "exitClose": 28.95,
+          "forwardReturn": -0.01025641025641028,
+          "win": false,
+          "mom": 0.03356890459363955,
+          "turnover": 3136976,
+          "top1Share": 0.5165944304779524
+        }
+      ]
+    },
+    {
+      "stockId": "2017",
+      "stockName": "官田鋼",
+      "samples": 1,
+      "winRate": 0,
+      "avgReturn": -0.03846153846153844,
+      "events": [
+        {
+          "stockId": "2017",
+          "stockName": "官田鋼",
+          "eventDate": "2026-05-08",
+          "forwardDate": "2026-05-19",
+          "holdDays": 3,
+          "entryClose": 8.84,
+          "exitClose": 8.5,
+          "forwardReturn": -0.03846153846153844,
+          "win": false,
+          "mom": 0.025522041763341143,
+          "turnover": 1686864,
+          "top1Share": 0.5239991616013414
+        }
+      ]
+    },
+    {
+      "stockId": "2027",
+      "stockName": "大成鋼",
+      "samples": 1,
+      "winRate": 1,
+      "avgReturn": 0.05269761606022588,
+      "events": [
+        {
+          "stockId": "2027",
+          "stockName": "大成鋼",
+          "eventDate": "2026-05-15",
+          "forwardDate": "2026-05-22",
+          "holdDays": 3,
+          "entryClose": 39.85,
+          "exitClose": 41.95,
+          "forwardReturn": 0.05269761606022588,
+          "win": true,
+          "mom": 0.05702917771883285,
+          "turnover": 111348472,
+          "top1Share": 0.3664086840288573
+        }
+      ]
+    },
+    {
+      "stockId": "2393",
+      "stockName": "億光",
+      "samples": 1,
+      "winRate": 0,
+      "avgReturn": -0.1533242876526459,
+      "events": [
+        {
+          "stockId": "2393",
+          "stockName": "億光",
+          "eventDate": "2026-05-08",
+          "forwardDate": "2026-05-19",
+          "holdDays": 3,
+          "entryClose": 73.7,
+          "exitClose": 62.4,
+          "forwardReturn": -0.1533242876526459,
+          "win": false,
+          "mom": 0.03656821378340378,
+          "turnover": 22585040,
+          "top1Share": 0.2596366940830652
+        }
+      ]
+    },
+    {
+      "stockId": "2483",
+      "stockName": "百容",
+      "samples": 1,
+      "winRate": 0,
+      "avgReturn": 0,
+      "events": [
+        {
+          "stockId": "2483",
+          "stockName": "百容",
+          "eventDate": "2026-05-08",
+          "forwardDate": "2026-05-19",
+          "holdDays": 3,
+          "entryClose": 23.8,
+          "exitClose": 23.8,
+          "forwardReturn": 0,
+          "win": false,
+          "mom": 0.0625000000000001,
+          "turnover": 758800,
+          "top1Share": 0.30274361400189215
+        }
+      ]
+    },
+    {
+      "stockId": "2603",
+      "stockName": "長榮",
+      "samples": 1,
+      "winRate": 0,
+      "avgReturn": -0.06855791962174941,
+      "events": [
+        {
+          "stockId": "2603",
+          "stockName": "長榮",
+          "eventDate": "2026-05-08",
+          "forwardDate": "2026-05-19",
+          "holdDays": 3,
+          "entryClose": 211.5,
+          "exitClose": 197,
+          "forwardReturn": -0.06855791962174941,
+          "win": false,
+          "mom": 0.04702970297029703,
+          "turnover": 57894556,
+          "top1Share": 0.3593689349976101
+        }
+      ]
+    },
+    {
+      "stockId": "2727",
+      "stockName": "王品",
+      "samples": 1,
+      "winRate": 0,
+      "avgReturn": -0.019027484143763214,
+      "events": [
+        {
+          "stockId": "2727",
+          "stockName": "王品",
+          "eventDate": "2026-05-15",
+          "forwardDate": "2026-05-22",
+          "holdDays": 3,
+          "entryClose": 236.5,
+          "exitClose": 232,
+          "forwardReturn": -0.019027484143763214,
+          "win": false,
+          "mom": 0.03275109170305677,
+          "turnover": 3063136,
+          "top1Share": 0.3042635742554174
+        }
+      ]
+    },
+    {
+      "stockId": "2852",
+      "stockName": "第一保",
+      "samples": 1,
+      "winRate": 0,
+      "avgReturn": -0.005555555555555503,
+      "events": [
+        {
+          "stockId": "2852",
+          "stockName": "第一保",
+          "eventDate": "2026-05-19",
+          "forwardDate": "2026-05-27",
+          "holdDays": 3,
+          "entryClose": 27,
+          "exitClose": 26.85,
+          "forwardReturn": -0.005555555555555503,
+          "win": false,
+          "mom": 0.03250478011472281,
+          "turnover": 1514956,
+          "top1Share": 0.3324432046079519
+        }
+      ]
+    },
+    {
+      "stockId": "2886",
+      "stockName": "兆豐金",
+      "samples": 1,
+      "winRate": 1,
+      "avgReturn": 0.011194029850746162,
+      "events": [
+        {
+          "stockId": "2886",
+          "stockName": "兆豐金",
+          "eventDate": "2026-05-08",
+          "forwardDate": "2026-05-19",
+          "holdDays": 3,
+          "entryClose": 40.2,
+          "exitClose": 40.65,
+          "forwardReturn": 0.011194029850746162,
+          "win": true,
+          "mom": 0.028132992327365765,
+          "turnover": 103291288,
+          "top1Share": 0.2556979461790545
+        }
+      ]
+    },
+    {
+      "stockId": "6192",
+      "stockName": "巨路",
+      "samples": 1,
+      "winRate": 1,
+      "avgReturn": 0.03543307086614173,
+      "events": [
+        {
+          "stockId": "6192",
+          "stockName": "巨路",
+          "eventDate": "2026-05-18",
+          "forwardDate": "2026-05-26",
+          "holdDays": 3,
+          "entryClose": 127,
+          "exitClose": 131.5,
+          "forwardReturn": 0.03543307086614173,
+          "win": true,
+          "mom": 0.05394190871369295,
+          "turnover": 856396,
+          "top1Share": 0.3577055094259207
+        }
+      ]
+    },
+    {
+      "stockId": "8016",
+      "stockName": "矽創",
+      "samples": 1,
+      "winRate": 1,
+      "avgReturn": 0.07308377896613191,
+      "events": [
+        {
+          "stockId": "8016",
+          "stockName": "矽創",
+          "eventDate": "2026-05-19",
+          "forwardDate": "2026-05-27",
+          "holdDays": 3,
+          "entryClose": 280.5,
+          "exitClose": 301,
+          "forwardReturn": 0.07308377896613191,
+          "win": true,
+          "mom": 0.027472527472527472,
+          "turnover": 10059324,
+          "top1Share": 0.2722848099111671
+        }
+      ]
+    },
+    {
+      "stockId": "9942",
+      "stockName": "茂順",
+      "samples": 1,
+      "winRate": 0,
+      "avgReturn": -0.0411522633744856,
+      "events": [
+        {
+          "stockId": "9942",
+          "stockName": "茂順",
+          "eventDate": "2026-05-08",
+          "forwardDate": "2026-05-19",
+          "holdDays": 3,
+          "entryClose": 121.5,
+          "exitClose": 116.5,
+          "forwardReturn": -0.0411522633744856,
+          "win": false,
+          "mom": 0.04291845493562232,
+          "turnover": 584180,
+          "top1Share": 0.2128487232746409
+        }
+      ]
+    }
+  ],
+  "events": [
+    {
+      "stockId": "1460",
+      "stockName": "宏遠",
+      "eventDate": "2026-05-08",
+      "forwardDate": "2026-05-19",
+      "holdDays": 3,
+      "entryClose": 7.25,
+      "exitClose": 7.03,
+      "forwardReturn": -0.030344827586206862,
+      "win": false,
+      "mom": 0.038681948424068704,
+      "turnover": 3173960,
+      "top1Share": 0.24663395726373488
+    },
+    {
+      "stockId": "1530",
+      "stockName": "亞崴",
+      "eventDate": "2026-05-19",
+      "forwardDate": "2026-05-27",
+      "holdDays": 3,
+      "entryClose": 27.3,
+      "exitClose": 32.7,
+      "forwardReturn": 0.19780219780219788,
+      "win": true,
+      "mom": 0.04198473282442754,
+      "turnover": 204136,
+      "top1Share": 0.49065787407756317
+    },
+    {
+      "stockId": "1533",
+      "stockName": "車王電",
+      "eventDate": "2026-05-08",
+      "forwardDate": "2026-05-19",
+      "holdDays": 3,
+      "entryClose": 33.85,
+      "exitClose": 34.55,
+      "forwardReturn": 0.020679468242245074,
+      "win": true,
+      "mom": 0.04153846153846158,
+      "turnover": 3379620,
+      "top1Share": 0.21077852553968981
+    },
+    {
+      "stockId": "1537",
+      "stockName": "廣隆",
+      "eventDate": "2026-05-19",
+      "forwardDate": "2026-05-27",
+      "holdDays": 3,
+      "entryClose": 126,
+      "exitClose": 125.5,
+      "forwardReturn": -0.003968253968253968,
+      "win": false,
+      "mom": 0.02857142857142857,
+      "turnover": 206300,
+      "top1Share": 0.2860600726152492
+    },
+    {
+      "stockId": "1733",
+      "stockName": "五鼎",
+      "eventDate": "2026-05-18",
+      "forwardDate": "2026-05-26",
+      "holdDays": 3,
+      "entryClose": 29.15,
+      "exitClose": 30.05,
+      "forwardReturn": 0.030874785591766797,
+      "win": true,
+      "mom": 0.03368794326241132,
+      "turnover": 407880,
+      "top1Share": 0.3296728281381443
+    },
+    {
+      "stockId": "1733",
+      "stockName": "五鼎",
+      "eventDate": "2026-05-19",
+      "forwardDate": "2026-05-27",
+      "holdDays": 3,
+      "entryClose": 29.3,
+      "exitClose": 29.9,
+      "forwardReturn": 0.02047781569965863,
+      "win": true,
+      "mom": 0.03350970017636681,
+      "turnover": 505644,
+      "top1Share": 0.20102962127767435
+    },
+    {
+      "stockId": "1808",
+      "stockName": "潤隆",
+      "eventDate": "2026-05-18",
+      "forwardDate": "2026-05-26",
+      "holdDays": 3,
+      "entryClose": 29.25,
+      "exitClose": 28.95,
+      "forwardReturn": -0.01025641025641028,
+      "win": false,
+      "mom": 0.03356890459363955,
+      "turnover": 3136976,
+      "top1Share": 0.5165944304779524
+    },
+    {
+      "stockId": "2017",
+      "stockName": "官田鋼",
+      "eventDate": "2026-05-08",
+      "forwardDate": "2026-05-19",
+      "holdDays": 3,
+      "entryClose": 8.84,
+      "exitClose": 8.5,
+      "forwardReturn": -0.03846153846153844,
+      "win": false,
+      "mom": 0.025522041763341143,
+      "turnover": 1686864,
+      "top1Share": 0.5239991616013414
+    },
+    {
+      "stockId": "2027",
+      "stockName": "大成鋼",
+      "eventDate": "2026-05-15",
+      "forwardDate": "2026-05-22",
+      "holdDays": 3,
+      "entryClose": 39.85,
+      "exitClose": 41.95,
+      "forwardReturn": 0.05269761606022588,
+      "win": true,
+      "mom": 0.05702917771883285,
+      "turnover": 111348472,
+      "top1Share": 0.3664086840288573
+    },
+    {
+      "stockId": "2393",
+      "stockName": "億光",
+      "eventDate": "2026-05-08",
+      "forwardDate": "2026-05-19",
+      "holdDays": 3,
+      "entryClose": 73.7,
+      "exitClose": 62.4,
+      "forwardReturn": -0.1533242876526459,
+      "win": false,
+      "mom": 0.03656821378340378,
+      "turnover": 22585040,
+      "top1Share": 0.2596366940830652
+    },
+    {
+      "stockId": "2483",
+      "stockName": "百容",
+      "eventDate": "2026-05-08",
+      "forwardDate": "2026-05-19",
+      "holdDays": 3,
+      "entryClose": 23.8,
+      "exitClose": 23.8,
+      "forwardReturn": 0,
+      "win": false,
+      "mom": 0.0625000000000001,
+      "turnover": 758800,
+      "top1Share": 0.30274361400189215
+    },
+    {
+      "stockId": "2603",
+      "stockName": "長榮",
+      "eventDate": "2026-05-08",
+      "forwardDate": "2026-05-19",
+      "holdDays": 3,
+      "entryClose": 211.5,
+      "exitClose": 197,
+      "forwardReturn": -0.06855791962174941,
+      "win": false,
+      "mom": 0.04702970297029703,
+      "turnover": 57894556,
+      "top1Share": 0.3593689349976101
+    },
+    {
+      "stockId": "2727",
+      "stockName": "王品",
+      "eventDate": "2026-05-15",
+      "forwardDate": "2026-05-22",
+      "holdDays": 3,
+      "entryClose": 236.5,
+      "exitClose": 232,
+      "forwardReturn": -0.019027484143763214,
+      "win": false,
+      "mom": 0.03275109170305677,
+      "turnover": 3063136,
+      "top1Share": 0.3042635742554174
+    },
+    {
+      "stockId": "2852",
+      "stockName": "第一保",
+      "eventDate": "2026-05-19",
+      "forwardDate": "2026-05-27",
+      "holdDays": 3,
+      "entryClose": 27,
+      "exitClose": 26.85,
+      "forwardReturn": -0.005555555555555503,
+      "win": false,
+      "mom": 0.03250478011472281,
+      "turnover": 1514956,
+      "top1Share": 0.3324432046079519
+    },
+    {
+      "stockId": "2886",
+      "stockName": "兆豐金",
+      "eventDate": "2026-05-08",
+      "forwardDate": "2026-05-19",
+      "holdDays": 3,
+      "entryClose": 40.2,
+      "exitClose": 40.65,
+      "forwardReturn": 0.011194029850746162,
+      "win": true,
+      "mom": 0.028132992327365765,
+      "turnover": 103291288,
+      "top1Share": 0.2556979461790545
+    },
+    {
+      "stockId": "6192",
+      "stockName": "巨路",
+      "eventDate": "2026-05-18",
+      "forwardDate": "2026-05-26",
+      "holdDays": 3,
+      "entryClose": 127,
+      "exitClose": 131.5,
+      "forwardReturn": 0.03543307086614173,
+      "win": true,
+      "mom": 0.05394190871369295,
+      "turnover": 856396,
+      "top1Share": 0.3577055094259207
+    },
+    {
+      "stockId": "8016",
+      "stockName": "矽創",
+      "eventDate": "2026-05-19",
+      "forwardDate": "2026-05-27",
+      "holdDays": 3,
+      "entryClose": 280.5,
+      "exitClose": 301,
+      "forwardReturn": 0.07308377896613191,
+      "win": true,
+      "mom": 0.027472527472527472,
+      "turnover": 10059324,
+      "top1Share": 0.2722848099111671
+    },
+    {
+      "stockId": "9942",
+      "stockName": "茂順",
+      "eventDate": "2026-05-08",
+      "forwardDate": "2026-05-19",
+      "holdDays": 3,
+      "entryClose": 121.5,
+      "exitClose": 116.5,
+      "forwardReturn": -0.0411522633744856,
+      "win": false,
+      "mom": 0.04291845493562232,
+      "turnover": 584180,
+      "top1Share": 0.2128487232746409
+    }
+  ],
+  "verdict": "🟡 部分通過（資料區間不足，邏輯待長期驗證）"
+}

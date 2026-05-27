@@ -4,6 +4,7 @@ import { HomePage } from './HomePage'
 import { StockPage } from './pages/StockPage'
 import { BranchPage } from './pages/BranchPage'
 import { PerformancePage } from './pages/PerformancePage'
+import { RecommendationsPage } from './pages/RecommendationsPage'
 import { StatusBar } from './components/StatusBar'
 
 export function App() {
@@ -23,12 +24,14 @@ export function App() {
         <NavLink to="/" end>
           Performance
         </NavLink>
+        <NavLink to="/recommendations">推薦</NavLink>
         <NavLink to="/stock">Stock</NavLink>
         <NavLink to="/branch">Branch</NavLink>
       </nav>
 
       <Routes>
         <Route path="/" element={<HomePage />} />
+        <Route path="/recommendations" element={<RecommendationsPage />} />
         <Route path="/stock" element={<StockPage />} />
         <Route path="/branch" element={<BranchPage />} />
         <Route path="/performance" element={<PerformancePage />} />

@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>溫和動能 × 分點確認 — 策略說明</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg: #0c1220;
+      --surface: #151d2e;
+      --surface2: #1e2940;
+      --text: #eef2f8;
+      --muted: #8fa3bf;
+      --accent: #38bdf8;
+      --accent2: #a78bfa;
+      --ok: #4ade80;
+      --warn: #fbbf24;
+      --err: #f87171;
+      --border: rgba(255,255,255,.08);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "PingFang TC", "Noto Sans TC", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.7;
+    }
+    .hero {
+      background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0c1220 100%);
+      padding: 2.5rem 1.25rem 2rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .wrap { max-width: 980px; margin: 0 auto; padding: 0 1.25rem 4rem; }
+    h1 { font-size: 1.75rem; margin: 0 0 .4rem; letter-spacing: -.02em; }
+    .subtitle { color: var(--muted); margin: 0; }
+    .badges { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: 1rem; }
+    .badge {
+      font-size: .78rem; padding: .25rem .7rem; border-radius: 999px;
+      background: var(--surface2); border: 1px solid var(--border); color: var(--muted);
+    }
+    .badge.ok { color: var(--ok); border-color: rgba(74,222,128,.3); background: rgba(74,222,128,.08); }
+    section { margin-top: 2.25rem; }
+    h2 {
+      font-size: 1.15rem; color: var(--accent); margin: 0 0 1rem;
+      display: flex; align-items: center; gap: .5rem;
+    }
+    h2::before { content: ""; width: 4px; height: 1.1em; background: var(--accent); border-radius: 2px; }
+    .card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 14px; padding: 1.25rem 1.35rem; margin-bottom: 1rem;
+    }
+    .grid3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; }
+    .constraint {
+      border-left: 3px solid var(--accent2); padding-left: 1rem;
+    }
+    .constraint h3 { margin: 0 0 .35rem; font-size: .95rem; }
+    .constraint p { margin: 0; color: var(--muted); font-size: .9rem; }
+    .tabs { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: 1rem; }
+    .tab {
+      border: 1px solid var(--border); background: var(--surface2); color: var(--text);
+      padding: .45rem 1rem; border-radius: 999px; cursor: pointer; font-size: .88rem;
+      transition: all .2s;
+    }
+    .tab:hover { border-color: var(--accent); }
+    .tab.active { background: rgba(56,189,248,.15); border-color: var(--accent); color: var(--accent); }
+    .panel { display: none; animation: fade .35s ease; }
+    .panel.active { display: block; }
+    @keyframes fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+    .flow {
+      display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin: 1rem 0;
+    }
+    .step {
+      background: var(--surface2); border: 1px solid var(--border);
+      padding: .65rem 1rem; border-radius: 10px; font-size: .88rem; flex: 1; min-width: 140px;
+      text-align: center;
+    }
+    .arrow { color: var(--muted); font-size: 1.2rem; }
+    .chart-box { height: 260px; position: relative; }
+    table { width: 100%; border-collapse: collapse; font-size: .88rem; }
+    th, td { padding: .55rem .65rem; text-align: left; border-bottom: 1px solid var(--border); }
+    th { color: var(--muted); font-weight: 600; }
+    .pos { color: var(--ok); }
+    .neg { color: var(--err); }
+    .demo-controls { display: flex; flex-wrap: wrap; gap: .75rem; align-items: center; margin-bottom: 1rem; }
+    input[type=range] { width: 160px; accent-color: var(--accent); }
+    .result-pill {
+      padding: .5rem 1rem; border-radius: 10px; font-weight: 600; font-size: .9rem;
+      transition: background .3s, color .3s;
+    }
+    .result-pill.pass { background: rgba(74,222,128,.12); color: var(--ok); }
+    .result-pill.fail { background: rgba(248,113,113,.12); color: var(--err); }
+    .disclaimer {
+      font-size: .82rem; color: var(--muted); border-top: 1px solid var(--border);
+      padding-top: 1.5rem; margin-top: 2rem;
+    }
+    .link-btn {
+      display: inline-block; margin-top: .75rem; padding: .55rem 1.1rem;
+      background: rgba(56,189,248,.12); border: 1px solid rgba(56,189,248,.35);
+      color: var(--accent); border-radius: 10px; text-decoration: none; font-size: .88rem;
+    }
+    .link-btn:hover { background: rgba(56,189,248,.22); }
+    .pulse { animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .65; } }
+  </style>
+</head>
+<body>
+  <header class="hero">
+    <div class="wrap" style="padding-bottom:0">
+      <h1>溫和動能 × 分點確認</h1>
+      <p class="subtitle">第一套動能策略 — 給外行人看的白話版 · 2026-05-27</p>
+      <div class="badges">
+        <span class="badge ok">持有約 15–20 交易日</span>
+        <span class="badge">只碰有量的熱門股</span>
+        <span class="badge">避開三根大紅棒</span>
+        <span class="badge pulse">🟡 驗證員：部分通過（資料尚不足 1 年）</span>
+      </div>
+    </div>
+  </header>
+
+  <div class="wrap">
+    <section>
+      <h2>這策略在幹嘛？</h2>
+      <div class="card">
+        <p>大盤熱的時候，很多股票會「慢慢變強」而不是一次噴完。這套做法專找<strong>溫和上漲</strong>、<strong>成交量夠大</strong>、且<strong>分點（券商）有在買</strong>的標的，抱大約 <strong>3～4 週</strong>，不是今天買後天賣。</p>
+        <p style="color:var(--muted);margin-bottom:0">白話：跟著「有資金在顧、但還沒被炒爛」的動能股，用小部位參與熱門題材。</p>
+      </div>
+    </section>
+
+    <section>
+      <h2>你的三個在意點 → 具體規則</h2>
+      <div class="grid3">
+        <div class="card constraint">
+          <h3>❌ 不要短進短出</h3>
+          <p>實盤計畫持有 <strong>15–20 個交易日</strong>（約 3–4 週）。只有跌破停損（例如 -8%）或動能明顯消失才出場。</p>
+        </div>
+        <div class="card constraint">
+          <h3>❌ 不要交易量太小</h3>
+          <p>分點買賣合計至少 <strong>12 萬股</strong>，確保進出場不會卡死。大型股像台積電、金融股通常較容易過關。</p>
+        </div>
+        <div class="card constraint">
+          <h3>❌ 不要已經漲太多的</h3>
+          <p>近 3 日單日漲幅 ≤ 3%、三日合計 ≤ 7%；且<strong>今天</strong>漲幅 ≤ 2%。動能區間 2.5%–7%（3 日），避開連續三根大紅棒。</p>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>進場流程（五關篩選）</h2>
+      <div class="flow">
+        <div class="step">① 3 日動能<br>2.5%–7%</div>
+        <span class="arrow">→</span>
+        <div class="step">② 反追高<br>無大紅棒</div>
+        <span class="arrow">→</span>
+        <div class="step">③ 成交量<br>≥ 12 萬股</div>
+        <span class="arrow">→</span>
+        <div class="step">④ 分點淨買<br>≥ 3% 量</div>
+        <span class="arrow">→</span>
+        <div class="step">⑤ 主力集中度<br>≥ 20%</div>
+      </div>
+      <div class="tabs" id="tabs">
+        <button class="tab active" data-tab="entry">進場條件</button>
+        <button class="tab" data-tab="exit">出場條件</button>
+        <button class="tab" data-tab="risk">風控與部位</button>
+      </div>
+      <div class="card panel active" id="panel-entry">
+        <ul>
+          <li>近 <strong>3 個交易日</strong>累積漲幅在 2.5%～7%（有動能，但還沒過熱）</li>
+          <li>近 3 日任一日漲幅 ≤ 3%，三日加總 ≤ 7%；<strong>進場日</strong>漲幅 ≤ 2%</li>
+          <li>當日分點買賣量 ≥ 12 萬股</li>
+          <li>分點<strong>淨買超</strong>占成交量 ≥ 3%</li>
+          <li>最大買超分點占所有分點淨買賣絕對值 ≥ 20%（有主力痕跡）</li>
+        </ul>
+      </div>
+      <div class="card panel" id="panel-exit">
+        <ul>
+          <li><strong>時間出場</strong>：持有滿 15–20 交易日，無論盈虧先減碼或全出</li>
+          <li><strong>停損</strong>：自進場價下跌 8% 出場</li>
+          <li><strong>停利</strong>：獲利達 15% 可先賣一半，其餘用移動停利（例如從高點回撤 5%）</li>
+          <li><strong>動能失效</strong>：若 3 日動能轉負且分點轉淨賣，提前出場</li>
+        </ul>
+      </div>
+      <div class="card panel" id="panel-risk">
+        <ul>
+          <li>總資金只用 <strong>10%–20%</strong> 做這套動能策略（你說的小部分錢）</li>
+          <li>同時持有 <strong>3～5 檔</strong>，每檔約 3%–5% 總資金</li>
+          <li>避免 all-in 單一熱門股；0050 / 2330 可當「底倉」但分點條件常較難過</li>
+        </ul>
+      </div>
+    </section>
+
+    <section>
+      <h2>互動小教室：這檔能進嗎？</h2>
+      <div class="card">
+        <p style="color:var(--muted);font-size:.9rem">拖曳滑桿模擬一檔股票的條件，看能不能過五關。（數字僅供理解，非即時報價）</p>
+        <div class="demo-controls">
+          <label>3日動能 <span id="v-mom">4.5</span>% <input type="range" id="s-mom" min="0" max="12" step="0.1" value="4.5"></label>
+          <label>今日漲幅 <span id="v-today">1.2</span>% <input type="range" id="s-today" min="-3" max="8" step="0.1" value="1.2"></label>
+          <label>分點量(萬股) <span id="v-vol">15</span> <input type="range" id="s-vol" min="1" max="50" step="1" value="15"></label>
+          <label>淨買占比 <span id="v-net">5</span>% <input type="range" id="s-net" min="-5" max="15" step="0.5" value="5"></label>
+        </div>
+        <div id="demo-result" class="result-pill pass">✅ 五關全過 — 可列入觀察名單</div>
+        <div class="chart-box" style="margin-top:1rem"><canvas id="filterChart"></canvas></div>
+      </div>
+    </section>
+
+    <section>
+      <h2>今日（2026-05-27）符合條件標的</h2>
+      <div class="card">
+        <p style="color:var(--muted);font-size:.9rem;margin-top:0">依 v3 規則掃描資料庫，以下為<strong>觀察名單</strong>，非買入指令。</p>
+        <table>
+          <thead><tr><th>代號</th><th>名稱</th><th>3日動能</th><th>分點量</th><th>淨買</th><th>主力集中度</th><th>備註</th></tr></thead>
+          <tbody>
+            <tr><td>2883</td><td>凱基金</td><td class="pos">3.0%</td><td>3.05 億股</td><td class="pos">7.4 千萬</td><td>45%</td><td>金融、量最大</td></tr>
+            <tr><td>2330</td><td>台積電</td><td class="pos">4.3%</td><td>8786 萬股</td><td class="pos">2275 萬</td><td>27%</td><td>AI 核心、流動性佳</td></tr>
+            <tr><td>8112</td><td>至上</td><td class="pos">2.9%</td><td>7993 萬股</td><td class="pos">406 萬</td><td>39%</td><td>溫和動能</td></tr>
+            <tr><td>1721</td><td>三晃</td><td class="pos">5.1%</td><td>1461 萬股</td><td class="pos">126 萬</td><td>23%</td><td>中小型，波動較大</td></tr>
+            <tr><td>2373</td><td>震旦行</td><td class="pos">3.4%</td><td>89 萬股</td><td class="pos">8.2 萬</td><td>44%</td><td>量偏小，慎選</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section>
+      <h2>為什麼這樣設計？</h2>
+      <div class="card chart-box"><canvas id="whyChart"></canvas></div>
+    </section>
+
+    <section>
+      <h2>下一步</h2>
+      <div class="card">
+        <p>驗證員已跑完三版回測迭代，完整數據報告（含 v1→v3 比較、樣本表、資料限制說明）請看：</p>
+        <a class="link-btn" href="backtest-momentum-report.html">📊 打開回測數據報告</a>
+        <p style="color:var(--warn);font-size:.88rem;margin-top:1rem">⚠️ 目前資料庫只有約 <strong>10 個交易日</strong>，無法做你要求的 1 年以上回測。報告會說清楚這個限制；補齊歷史資料後應重新驗證。</p>
+      </div>
+    </section>
+
+    <p class="disclaimer">
+      <strong>風險聲明</strong>：以上為教育與策略研究用途，不構成投資建議。股市有風險，過去回測不代表未來績效。請依自身風險承受能力決定是否交易。
+    </p>
+  </div>
+
+  <script>
+    document.querySelectorAll('.tab').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById('panel-' + btn.dataset.tab).classList.add('active');
+      });
+    });
+
+    const checks = [
+      { key: 'mom', label: '3日動能 2.5–7%', test: v => v.mom >= 2.5 && v.mom <= 7 },
+      { key: 'today', label: '今日漲 ≤2%', test: v => v.today <= 2 },
+      { key: 'vol', label: '量 ≥12萬股', test: v => v.vol >= 12 },
+      { key: 'net', label: '淨買 ≥3%', test: v => v.net >= 3 },
+      { key: 'conc', label: '主力 ≥20%', test: () => true }
+    ];
+
+    let filterChart;
+    function updateDemo() {
+      const mom = +document.getElementById('s-mom').value;
+      const today = +document.getElementById('s-today').value;
+      const vol = +document.getElementById('s-vol').value;
+      const net = +document.getElementById('s-net').value;
+      document.getElementById('v-mom').textContent = mom;
+      document.getElementById('v-today').textContent = today;
+      document.getElementById('v-vol').textContent = vol;
+      document.getElementById('v-net').textContent = net;
+      const v = { mom, today, vol, net };
+      const results = checks.map(c => c.test(v) ? 1 : 0);
+      const pass = results.every(x => x === 1) && mom <= 7;
+      const el = document.getElementById('demo-result');
+      el.className = 'result-pill ' + (pass ? 'pass' : 'fail');
+      el.textContent = pass ? '✅ 五關全過 — 可列入觀察名單' : '❌ 條件未過 — 今天先觀望';
+      const labels = checks.map(c => c.label);
+      if (filterChart) filterChart.destroy();
+      filterChart = new Chart(document.getElementById('filterChart'), {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [{
+            label: '通過',
+            data: results.map(x => x * 100),
+            backgroundColor: results.map(x => x ? 'rgba(74,222,128,.7)' : 'rgba(248,113,113,.5)'),
+            borderRadius: 6
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          scales: { y: { max: 100, ticks: { callback: x => x + '%' } } },
+          plugins: { legend: { display: false } }
+        }
+      });
+    }
+    ['s-mom','s-today','s-vol','s-net'].forEach(id => {
+      document.getElementById(id).addEventListener('input', updateDemo);
+    });
+    updateDemo();
+
+    new Chart(document.getElementById('whyChart'), {
+      type: 'radar',
+      data: {
+        labels: ['持有時間', '流動性', '避追高', '分點確認', '參與熱門'],
+        datasets: [
+          { label: '本策略', data: [85, 80, 90, 75, 70], borderColor: '#38bdf8', backgroundColor: 'rgba(56,189,248,.2)' },
+          { label: '短線追漲', data: [20, 50, 30, 40, 90], borderColor: '#f87171', backgroundColor: 'rgba(248,113,113,.15)' }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        scales: { r: { min: 0, max: 100, ticks: { display: false } } }
+      }
+    });
+  </script>
+</body>
+</html>

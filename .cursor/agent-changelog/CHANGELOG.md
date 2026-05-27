@@ -2,6 +2,12 @@
 
 > 新的條目加在最上面。Subagent 的「Changelog 教訓」區從這裡 sync。
 
+## 2026-05-27 — Performance / Stock 個股區間漲跌
+
+- **來源**：team-dev / user
+- **功能**：`StockPriceWindow` + `ByStockWindowResponse.priceWindow`；`getStockPriceWindow` 查 `stock_close`；Performance 頁個股搜尋（同回溯 N 日）；`StockPriceSummary` 共用元件；排行表頭 `{metricLabel}（績效）`
+- **Agent 規則**：區間漲跌用起訖日收盤價，與 agg 同一 `startDate`/`endDate`；缺價時 `priceWindow: null` 並提示
+
 ## 2026-05-26 — 圓餅圖 tooltip 百分比與 Top10 排序
 
 - **來源**：qa-inspector

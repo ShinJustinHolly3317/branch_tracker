@@ -6,15 +6,32 @@ import type {
   BranchSuggestResponse,
   ByBranchWindowResponse,
   ByStockWindowResponse,
+  CreateFavoriteRequest,
+  FavoritesListResponse,
   LatestStatusResponse,
   PerformanceMetric,
-  StockSuggestResponse
+  ShortTermRecommendationsResponse,
+  StockRecommendation,
+  StockSuggestResponse,
+  UpdateFavoriteRequest,
+  UserFavorite
 } from '@twbbd/shared'
 import { getDb } from './db.js'
 import { getLastNDates, getLatestDate } from './dates.js'
 import { aggregateByBranch, aggregateByStock } from './agg.js'
 import { computeBranchPerformance } from './performance.js'
 import { getStockCatalog } from './stockCatalog.js'
+import { getStockPriceWindow } from './stockPrice.js'
+import { computeShortTermRecommendations, getRecommendationForStock } from './recommendations.js'
+import { createFavorite, deleteFavorite, listFavorites, updateFavorite } from './favorites.js'
+
+const CLIENT_ID_HEADER = 'x-twbbd-client-id'
+
+function readClientId(req: express.Request): string | null {
+  const raw = req.header(CLIENT_ID_HEADER)
+  if (!raw || raw.trim().length < 8 || raw.length > 64) return null
+  return raw.trim()
+}
 
 export function createApp(): express.Express {
   const app = express()
@@ -127,13 +144,18 @@ export function createApp(): express.Express {
     if (dates.length === 0) return res.json(emptyStockWindow(stockId))
 
     const agg = await aggregateByStock({ db, stockId, dates })
+    const priceWindow =
+      agg.startDate && agg.endDate
+        ? await getStockPriceWindow(db, stockId, agg.startDate, agg.endDate)
+        : null
     const resp: ByStockWindowResponse = {
       stockId,
       startDate: agg.startDate!,
       endDate: agg.endDate!,
       tradingDays: agg.tradingDays,
       branches: agg.branches,
-      concentration: agg.concentration
+      concentration: agg.concentration,
+      priceWindow
     }
     return res.json(resp)
   })
@@ -255,6 +277,83 @@ export function createApp(): express.Express {
       ...resp,
       ...(bumped ? { debugMessage: [resp.debugMessage, bumped].filter(Boolean).join(' ') } : {})
     })
+  })
+
+  app.get('/recommendations/short-term', async (req, res) => {
+    const limit = z.coerce.number().int().min(1).max(50).default(20).parse(req.query.limit)
+    const db = getDb()
+    const result = await computeShortTermRecommendations({ db, limit })
+    const body: ShortTermRecommendationsResponse = {
+      strategyName: result.strategyName,
+      signalDate: result.signalDate,
+      generatedAt: new Date().toISOString(),
+      disclaimer: '以下為策略研究產出，非投資建議。請依自身風險承受能力決定是否交易。',
+      items: result.items,
+      debugMessage: result.debugMessage
+    }
+    return res.json(body)
+  })
+
+  app.get('/recommendations/short-term/:stockId', async (req, res) => {
+    const stockId = z.string().min(1).parse(req.params.stockId)
+    const db = getDb()
+    const item = await getRecommendationForStock({ db, stockId })
+    if (!item) return res.status(404).json({ error: 'not_found' })
+    return res.json(item satisfies StockRecommendation)
+  })
+
+  app.get('/favorites', async (req, res) => {
+    const clientId = readClientId(req)
+    if (!clientId) return res.status(400).json({ error: 'missing_client_id' })
+    const db = getDb()
+    const items = await listFavorites(db, clientId)
+    const body: FavoritesListResponse = { items }
+    return res.json(body)
+  })
+
+  app.post('/favorites', async (req, res) => {
+    const clientId = readClientId(req)
+    if (!clientId) return res.status(400).json({ error: 'missing_client_id' })
+    const body = z
+      .object({
+        stockId: z.string().min(1),
+        stockName: z.string().min(1),
+        buyDate: z.string().nullable().optional(),
+        buyPrice: z.number().nullable().optional(),
+        notes: z.string().nullable().optional(),
+        strategySnapshot: z.object({}).passthrough()
+      })
+      .parse(req.body) as CreateFavoriteRequest
+    const db = getDb()
+    const item = await createFavorite(db, clientId, body)
+    return res.status(201).json(item satisfies UserFavorite)
+  })
+
+  app.patch('/favorites/:id', async (req, res) => {
+    const clientId = readClientId(req)
+    if (!clientId) return res.status(400).json({ error: 'missing_client_id' })
+    const id = z.string().uuid().parse(req.params.id)
+    const body = z
+      .object({
+        buyDate: z.string().nullable().optional(),
+        buyPrice: z.number().nullable().optional(),
+        notes: z.string().nullable().optional()
+      })
+      .parse(req.body) as UpdateFavoriteRequest
+    const db = getDb()
+    const item = await updateFavorite(db, clientId, id, body)
+    if (!item) return res.status(404).json({ error: 'not_found' })
+    return res.json(item satisfies UserFavorite)
+  })
+
+  app.delete('/favorites/:id', async (req, res) => {
+    const clientId = readClientId(req)
+    if (!clientId) return res.status(400).json({ error: 'missing_client_id' })
+    const id = z.string().uuid().parse(req.params.id)
+    const db = getDb()
+    const ok = await deleteFavorite(db, clientId, id)
+    if (!ok) return res.status(404).json({ error: 'not_found' })
+    return res.status(204).send()
   })
 
   return app

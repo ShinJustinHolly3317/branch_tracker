@@ -437,6 +437,68 @@ tbody tr:hover {
   line-height: 1;
 }
 
+/* 個股區間漲跌摘要 */
+.stock-price-summary {
+  margin-top: 16px;
+  padding: 14px 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(15, 155, 142, 0.22);
+  background: rgba(15, 155, 142, 0.06);
+}
+
+.stock-price-summary__title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-nav-active);
+  margin-bottom: 12px;
+}
+
+.stock-price-summary__stock {
+  margin-left: 8px;
+  font-weight: 600;
+}
+
+.stock-price-summary__grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+.stock-price-summary__label {
+  display: block;
+  font-size: 12px;
+  color: var(--color-text-muted);
+  margin-bottom: 4px;
+}
+
+.stock-price-summary__value {
+  display: block;
+  font-size: 18px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text);
+}
+
+.stock-price-summary__sub {
+  display: block;
+  font-size: 11px;
+  margin-top: 2px;
+}
+
+.stock-price-summary--up .stock-price-summary__change {
+  color: #c0392b;
+}
+
+.stock-price-summary--down .stock-price-summary__change {
+  color: #1a7f4b;
+}
+
+@media (max-width: 900px) {
+  .stock-price-summary__grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
 /* Branch search dropdown */
 .suggest-wrap {
   position: relative;
@@ -500,3 +562,137 @@ tbody tr:hover {
     height: 320px;
   }
 }
+
+/* 股票推薦＆最愛 */
+.rec-tabs {
+  display: flex;
+  gap: 8px;
+  margin: 16px 0;
+}
+
+.rec-tab {
+  border: 1px solid var(--color-border);
+  background: #fff;
+  color: var(--color-text-muted);
+  padding: 9px 16px;
+  border-radius: 999px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.rec-tab.active {
+  background: var(--color-nav-active);
+  color: #f0fdfa;
+  border-color: var(--color-nav-active);
+}
+
+.rec-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.rec-card {
+  border: 1px solid rgba(13, 148, 136, 0.22);
+  border-radius: var(--radius-lg);
+  padding: 16px 18px;
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.rec-card__head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.rec-card__title {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.rec-card__title a {
+  color: var(--color-nav-active);
+  text-decoration: none;
+}
+
+.rec-card__title a:hover {
+  text-decoration: underline;
+}
+
+.rec-card__meta {
+  margin: 4px 0 0;
+  font-size: 13px;
+}
+
+.rec-card__badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.rec-badge {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--color-accent-soft);
+  color: var(--color-nav-active);
+}
+
+.rec-badge--high {
+  background: rgba(74, 222, 128, 0.18);
+  color: #166534;
+}
+
+.rec-badge--mid {
+  background: rgba(251, 191, 36, 0.18);
+  color: #92400e;
+}
+
+.rec-badge--low {
+  background: rgba(248, 113, 113, 0.15);
+  color: #991b1b;
+}
+
+.rec-badge--score {
+  background: rgba(99, 102, 241, 0.12);
+  color: #3730a3;
+}
+
+.rec-card__grid {
+  margin-top: 0;
+}
+
+.rec-list {
+  margin: 0;
+  padding-left: 1.2rem;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.rec-list--compact li {
+  margin-bottom: 6px;
+}
+
+.rec-caution {
+  border-color: rgba(217, 119, 6, 0.25);
+  background: rgba(217, 119, 6, 0.06);
+}
+
+.rec-card__foot {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-border);
+}
+
+.fav-edit {
+  margin-bottom: 12px;
+}
+
+.fav-summary .mini-body {
+  font-size: 14px;
+}
+

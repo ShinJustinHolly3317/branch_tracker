@@ -4,6 +4,7 @@ import { api } from '../api'
 import { useDashboardTabCache } from '../DashboardTabCache'
 import type { StockSuggestion } from '@twbbd/shared'
 import { InteractivePieChart } from '../components/InteractivePieChart'
+import { StockPriceSummary } from '../components/StockPriceSummary'
 
 /** Branch 頁 deeplink：與 Performance 排行榜同款 `branchId` / `branchName` */
 function branchSearchPath(branchId: string, branchName: string | undefined) {
@@ -278,6 +279,14 @@ export function StockPage() {
         </div>
 
         {hint ? <div className="hint-soft">{hint}</div> : null}
+
+        {data?.priceWindow ? (
+          <StockPriceSummary
+            stockId={data.stockId}
+            stockName={selected?.stockName}
+            priceWindow={data.priceWindow}
+          />
+        ) : null}
 
         {data && data.branches.length > 0 ? (
           <>

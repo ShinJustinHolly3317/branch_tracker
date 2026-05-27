@@ -2,16 +2,26 @@ import { jsx as _jsx, jsxs as _jsxs, Fragment as _Fragment } from "react/jsx-run
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api';
+import { StockPriceSummary } from '../components/StockPriceSummary';
 import { useDashboardTabCache } from '../DashboardTabCache';
 export function PerformancePage() {
     const { performanceTab, setPerformanceTab, bootstrapRefs } = useDashboardTabCache();
     const navigate = useNavigate();
     const { days, forwardDays, minSample, metric, data, hint } = performanceTab;
     const [loading, setLoading] = useState(false);
+    const [stockQuery, setStockQuery] = useState('');
+    const [stockSelected, setStockSelected] = useState(null);
+    const [stockSuggestions, setStockSuggestions] = useState([]);
+    const [openStockSuggest, setOpenStockSuggest] = useState(false);
+    const [stockHighlightIdx, setStockHighlightIdx] = useState(0);
+    const [stockPriceLoading, setStockPriceLoading] = useState(false);
+    const [stockPriceWindow, setStockPriceWindow] = useState(null);
+    const [stockPriceHint, setStockPriceHint] = useState(null);
     const daysRef = useRef(days);
     const forwardDaysRef = useRef(forwardDays);
     const minSampleRef = useRef(minSample);
     const metricRef = useRef(metric);
+    const stockSuggestSeq = useRef(0);
     useEffect(() => {
         daysRef.current = days;
     }, [days]);
@@ -24,6 +34,47 @@ export function PerformancePage() {
     useEffect(() => {
         metricRef.current = metric;
     }, [metric]);
+    useEffect(() => {
+        const q = stockQuery.trim();
+        const id = ++stockSuggestSeq.current;
+        const handle = window.setTimeout(() => {
+            api
+                .stockSuggest(q, 40)
+                .then((r) => {
+                if (id !== stockSuggestSeq.current)
+                    return;
+                setStockSuggestions(r.suggestions);
+                setStockHighlightIdx(0);
+            })
+                .catch(() => {
+                if (id !== stockSuggestSeq.current)
+                    return;
+                setStockSuggestions([]);
+            });
+        }, 220);
+        return () => window.clearTimeout(handle);
+    }, [stockQuery]);
+    const loadStockPrice = useCallback(async (stockId) => {
+        setStockPriceLoading(true);
+        setStockPriceHint(null);
+        try {
+            const resp = await api.byStock(stockId, daysRef.current);
+            if (resp.priceWindow) {
+                setStockPriceWindow(resp.priceWindow);
+            }
+            else {
+                setStockPriceWindow(null);
+                setStockPriceHint('此區間缺少起訖收盤價，無法計算漲跌幅。');
+            }
+        }
+        catch {
+            setStockPriceWindow(null);
+            setStockPriceHint('連線異常，無法載入個股價格。');
+        }
+        finally {
+            setStockPriceLoading(false);
+        }
+    }, []);
     const runPerformance = useCallback(async () => {
         setLoading(true);
         try {
@@ -35,6 +86,9 @@ export function PerformancePage() {
                     ? '這組條件暫時算不出排行；試著調低最小樣本、縮短前瞻 K，或累積更多交易日後再試。'
                     : null
             }));
+            if (stockSelected?.stockId) {
+                void loadStockPrice(stockSelected.stockId);
+            }
         }
         catch {
             setPerformanceTab((s) => ({
@@ -46,7 +100,7 @@ export function PerformancePage() {
         finally {
             setLoading(false);
         }
-    }, [setPerformanceTab]);
+    }, [setPerformanceTab, stockSelected?.stockId, loadStockPrice]);
     /** 首訪自動計算；有快取結果則不重打（切換分頁回來保留） */
     useEffect(() => {
         if (performanceTab.data != null || performanceTab.hint != null)
@@ -56,11 +110,24 @@ export function PerformancePage() {
         bootstrapRefs.perfDefaultBootstrapFired.current = true;
         void runPerformance();
     }, [performanceTab.data, performanceTab.hint, bootstrapRefs, runPerformance]);
+    /** 已選個股時，回溯 N 日變更後重算區間漲跌 */
+    useEffect(() => {
+        if (!stockSelected?.stockId)
+            return;
+        void loadStockPrice(stockSelected.stockId);
+    }, [days, stockSelected?.stockId, loadStockPrice]);
     const metricLabel = metric === 'avgForwardReturn'
         ? '平均前瞻報酬'
         : metric === 'hitRate'
             ? '勝率'
             : '加權報酬 proxy';
+    function pickStockSuggestion(s) {
+        setStockSelected(s);
+        setStockQuery(`${s.stockId} ${s.stockName}`.trim());
+        setOpenStockSuggest(false);
+        void loadStockPrice(s.stockId);
+    }
+    const showStockDropdown = openStockSuggest && stockSuggestions.length > 0;
     /** Branch 頁 deeplink：`BranchPage` 會帶 keyword + 自動打 byBranch API */
     function branchSearchPath(branchId, branchName) {
         const sp = new URLSearchParams();
@@ -76,8 +143,34 @@ export function PerformancePage() {
                                 })), children: [_jsx("option", { value: "avgForwardReturn", children: "\u5E73\u5747\u524D\u77BB\u5831\u916C" }), _jsx("option", { value: "hitRate", children: "\u52DD\u7387" }), _jsx("option", { value: "weightedPnlProxy", children: "\u52A0\u6B0A\u5831\u916C proxy" })] })] }), _jsxs("div", { className: "field", children: [_jsx("span", { className: "field-label", children: "\u6700\u5C0F\u6A23\u672C" }), _jsx("input", { type: "number", min: 1, max: 500, value: minSample, onChange: (e) => setPerformanceTab((s) => ({
                                     ...s,
                                     minSample: Number(e.target.value)
-                                })) })] }), _jsxs("div", { className: "field", children: [_jsx("span", { className: "field-label", "aria-hidden": true, style: { visibility: 'hidden' }, children: "\u2014" }), _jsx("button", { type: "button", onClick: () => void runPerformance(), disabled: loading, children: loading ? '計算中…' : '計算' })] })] }), _jsxs("p", { className: "muted", style: { marginTop: 14 }, children: ["\u4F9D\u5206\u9EDE\u6DE8\u8CB7\u4E8B\u4EF6\u8A08\u7B97 ", metricLabel, "\uFF1B\u9700\u8981\u6709\u8DB3\u5920\u4EA4\u6613\u65E5\u8207\u300C\u524D\u77BB K \u65E5\u300D\u6536\u76E4\u50F9\u8CC7\u6599\u3002"] }), loading && !data ? _jsx("div", { className: "hint-soft", children: "\u8F09\u5165\u6392\u884C\u4E2D\u2026" }) : null, hint ? _jsx("div", { className: "hint-soft", children: hint }) : null, data?.debugMessage ? _jsx("div", { className: "hint-warn", children: data.debugMessage }) : null, data && data.reasonCode && data.top.length === 0 ? (_jsxs("div", { className: "muted", style: { marginTop: 12 }, children: ["\u8A3A\u65B7\uFF1A", _jsx("span", { className: "mono", children: data.reasonCode }), typeof data.effectiveForwardTradingDays === 'number' &&
-                        typeof data.requestedForwardTradingDays === 'number' ? (_jsxs(_Fragment, { children: [' ', "\u00B7 \u524D\u77BB K\uFF1A\u8ACB\u6C42 ", data.requestedForwardTradingDays, " / \u5BE6\u969B ", data.effectiveForwardTradingDays] })) : null] })) : null, data && data.top.length > 0 ? (_jsxs(_Fragment, { children: [_jsxs("div", { className: "muted", style: { marginTop: 16 }, children: ["\u53C3\u8003\u5340\u9593\uFF1A", data.startDate, " \u2192 ", data.endDate, _jsx("span", { style: { marginLeft: 8 }, className: "performance-table-hint", children: "\uFF08\u9EDE\u6574\u5217\u53EF\u5230 Branch \u4E26\u5E36\u5165\u8A72\u5206\u9EDE\u67E5\u8A62\uFF09" })] }), _jsxs("table", { children: [_jsx("thead", { children: _jsxs("tr", { children: [_jsx("th", { children: "\u5206\u9EDE" }), _jsx("th", { children: "\u6A23\u672C\u6578" }), _jsx("th", { children: "\u6578\u503C" })] }) }), _jsx("tbody", { children: data.top.map((r) => {
+                                })) })] }), _jsxs("div", { className: "field", children: [_jsx("span", { className: "field-label", "aria-hidden": true, style: { visibility: 'hidden' }, children: "\u2014" }), _jsx("button", { type: "button", onClick: () => void runPerformance(), disabled: loading, children: loading ? '計算中…' : '計算' })] })] }), _jsx("div", { className: "row align-start", style: { marginTop: 8 }, children: _jsxs("div", { className: "field suggest-wrap", children: [_jsx("span", { className: "field-label", children: "\u67E5\u500B\u80A1\u5340\u9593\u6F32\u8DCC\uFF08\u540C\u56DE\u6EAF N \u65E5\uFF09" }), _jsx("input", { role: "combobox", "aria-expanded": showStockDropdown, "aria-controls": "perf-stock-suggest-list", value: stockQuery, placeholder: "\u4F8B\u5982\uFF1A2330\u3001\u53F0\u7A4D\u96FB\u2026", onChange: (e) => {
+                                setStockQuery(e.target.value);
+                                setStockSelected(null);
+                                setStockPriceWindow(null);
+                                setStockPriceHint(null);
+                                setOpenStockSuggest(true);
+                            }, onFocus: () => setOpenStockSuggest(true), onBlur: () => window.setTimeout(() => setOpenStockSuggest(false), 180), onKeyDown: (e) => {
+                                if (!showStockDropdown)
+                                    return;
+                                if (e.key === 'ArrowDown') {
+                                    e.preventDefault();
+                                    setStockHighlightIdx((i) => Math.min(i + 1, stockSuggestions.length - 1));
+                                }
+                                else if (e.key === 'ArrowUp') {
+                                    e.preventDefault();
+                                    setStockHighlightIdx((i) => Math.max(i - 1, 0));
+                                }
+                                else if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    const s = stockSuggestions[stockHighlightIdx];
+                                    if (s)
+                                        pickStockSuggestion(s);
+                                }
+                                else if (e.key === 'Escape') {
+                                    setOpenStockSuggest(false);
+                                }
+                            } }), showStockDropdown ? (_jsx("ul", { id: "perf-stock-suggest-list", className: "suggest-list", role: "listbox", children: stockSuggestions.map((s, i) => (_jsx("li", { role: "option", "aria-selected": i === stockHighlightIdx, onMouseEnter: () => setStockHighlightIdx(i), onMouseDown: (ev) => ev.preventDefault(), onClick: () => pickStockSuggestion(s), children: _jsxs("strong", { children: [_jsx("span", { className: "mono", children: s.stockId }), " ", s.stockName] }) }, `${s.stockId}-${s.stockName}`))) })) : null] }) }), stockPriceLoading ? _jsx("div", { className: "hint-soft", children: "\u8F09\u5165\u500B\u80A1\u50F9\u683C\u4E2D\u2026" }) : null, stockPriceHint ? _jsx("div", { className: "hint-soft", children: stockPriceHint }) : null, stockSelected && stockPriceWindow ? (_jsx(StockPriceSummary, { stockId: stockSelected.stockId, stockName: stockSelected.stockName, priceWindow: stockPriceWindow })) : null, _jsxs("p", { className: "muted", style: { marginTop: 14 }, children: ["\u4F9D\u5206\u9EDE\u6DE8\u8CB7\u4E8B\u4EF6\u8A08\u7B97 ", metricLabel, "\uFF1B\u9700\u8981\u6709\u8DB3\u5920\u4EA4\u6613\u65E5\u8207\u300C\u524D\u77BB K \u65E5\u300D\u6536\u76E4\u50F9\u8CC7\u6599\u3002"] }), loading && !data ? _jsx("div", { className: "hint-soft", children: "\u8F09\u5165\u6392\u884C\u4E2D\u2026" }) : null, hint ? _jsx("div", { className: "hint-soft", children: hint }) : null, data?.debugMessage ? _jsx("div", { className: "hint-warn", children: data.debugMessage }) : null, data && data.reasonCode && data.top.length === 0 ? (_jsxs("div", { className: "muted", style: { marginTop: 12 }, children: ["\u8A3A\u65B7\uFF1A", _jsx("span", { className: "mono", children: data.reasonCode }), typeof data.effectiveForwardTradingDays === 'number' &&
+                        typeof data.requestedForwardTradingDays === 'number' ? (_jsxs(_Fragment, { children: [' ', "\u00B7 \u524D\u77BB K\uFF1A\u8ACB\u6C42 ", data.requestedForwardTradingDays, " / \u5BE6\u969B ", data.effectiveForwardTradingDays] })) : null] })) : null, data && data.top.length > 0 ? (_jsxs(_Fragment, { children: [_jsxs("div", { className: "muted", style: { marginTop: 16 }, children: ["\u53C3\u8003\u5340\u9593\uFF1A", data.startDate, " \u2192 ", data.endDate, _jsx("span", { style: { marginLeft: 8 }, className: "performance-table-hint", children: "\uFF08\u9EDE\u6574\u5217\u53EF\u5230 Branch \u4E26\u5E36\u5165\u8A72\u5206\u9EDE\u67E5\u8A62\uFF09" })] }), _jsxs("table", { children: [_jsx("thead", { children: _jsxs("tr", { children: [_jsx("th", { children: "\u5206\u9EDE" }), _jsx("th", { children: "\u6A23\u672C\u6578" }), _jsxs("th", { children: [metricLabel, "\uFF08\u7E3E\u6548\uFF09"] })] }) }), _jsx("tbody", { children: data.top.map((r) => {
                                     const to = branchSearchPath(r.branchId, r.branchName);
                                     const label = r.branchName || r.branchId;
                                     return (_jsxs("tr", { className: "performance-branch-row", role: "link", tabIndex: 0, title: "\u524D\u5F80 Branch \u4E26\u67E5\u8A62\u6B64\u5206\u9EDE\u6301\u80A1", "aria-label": `Branch：${label}`, onClick: () => navigate(to), onKeyDown: (e) => {
