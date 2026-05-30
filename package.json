@@ -8,6 +8,7 @@
   "scripts": {
     "sync:supabase": "node scripts/sync-to-supabase.mjs",
     "team-trading": "node scripts/team-trading-run.mjs",
+    "db:migrate": "node scripts/apply-migrations.mjs",
     "dev:api": "npm run -w @twbbd/api dev",
     "dev:ingest": "npm run -w @twbbd/ingester ingest:once",
     "ingest:local": "npm run -w @twbbd/shared build && npm run -w @twbbd/ingester build && DATABASE_URL=postgres://twbbd:twbbd@localhost:5432/twbbd TWSE_STOCKS=all TW_STOCK_UNIVERSE=twse DEBUG_INGEST=0 npm run -w @twbbd/ingester ingest:once",
