@@ -242,6 +242,36 @@ export type UpdateFavoriteRequest = {
   notes?: string | null
 }
 
+/** 單次 Team Trading 分析 — 列表摘要 */
+export type AnalysisRunStrategySummary = {
+  id: string
+  name: string
+  selectedVersion: string
+  verdict: string
+  samples: number
+  winRate: number
+  avgReturn: number
+  picks: Array<{ stockId: string; stockName: string }>
+}
+
+export type AnalysisRunListItem = {
+  id: string
+  runDate: string
+  generatedAt: string
+  source: string
+  strategies: AnalysisRunStrategySummary[]
+}
+
+export type AnalysisRunsListResponse = {
+  items: AnalysisRunListItem[]
+}
+
+export type AnalysisRunDetail = AnalysisRunListItem & {
+  manifest: Record<string, unknown>
+  summaryMd: string | null
+  reportHtml: string
+}
+
 export const StorageKeys = {
   dates: 'twbbd:dates', // redis list, oldest -> newest
   latestStatus: 'twbbd:status:latest', // json

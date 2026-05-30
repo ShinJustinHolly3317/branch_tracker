@@ -1,10 +1,10 @@
 {
   "strategy": "溫和動能 × 分點確認",
-  "generatedAt": "2026-05-27T12:40:34.277Z",
+  "generatedAt": "2026-05-30T05:00:12.245Z",
   "dataRange": {
     "start": "2026-04-30",
-    "end": "2026-05-27",
-    "tradingDays": 10
+    "end": "2026-05-29",
+    "tradingDays": 12
   },
   "params": {
     "holdDays": 3,
@@ -24,19 +24,19 @@
     "liveHoldTargetDays": "15–20（實盤建議；回測因資料長度縮短）"
   },
   "filterStats": {
-    "mom": 471,
-    "chase": 79,
-    "blob": 79,
-    "turnover": 78,
-    "net": 35,
-    "conc": 18,
-    "pass": 18
+    "mom": 793,
+    "chase": 118,
+    "blob": 118,
+    "turnover": 117,
+    "net": 50,
+    "conc": 26,
+    "pass": 26
   },
   "limitation": "資料庫僅含約 10 個交易日，無法做 1 年以上回測；以下為可用區間內的樣本外推參考，非正式長期驗證。",
   "overall": {
-    "samples": 18,
-    "winRate": 0.4444444444444444,
-    "avgReturn": 0.003977456803250272
+    "samples": 26,
+    "winRate": 0.46153846153846156,
+    "avgReturn": 0.0040875911465846635
   },
   "hotPool": [
     {
@@ -124,9 +124,9 @@
     {
       "stockId": "1733",
       "stockName": "五鼎",
-      "samples": 2,
-      "winRate": 1,
-      "avgReturn": 0.02567630064571271,
+      "samples": 3,
+      "winRate": 0.6666666666666666,
+      "avgReturn": 0.015453640252993143,
       "events": [
         {
           "stockId": "1733",
@@ -155,6 +155,20 @@
           "mom": 0.03350970017636681,
           "turnover": 505644,
           "top1Share": 0.20102962127767435
+        },
+        {
+          "stockId": "1733",
+          "stockName": "五鼎",
+          "eventDate": "2026-05-26",
+          "forwardDate": "2026-05-29",
+          "holdDays": 3,
+          "entryClose": 30.05,
+          "exitClose": 29.9,
+          "forwardReturn": -0.0049916805324459945,
+          "win": false,
+          "mom": 0.030874785591766797,
+          "turnover": 1319696,
+          "top1Share": 0.21386925678788118
         }
       ]
     },
@@ -320,6 +334,29 @@
       ]
     },
     {
+      "stockId": "2347",
+      "stockName": "聯強",
+      "samples": 1,
+      "winRate": 1,
+      "avgReturn": 0.017772511848341232,
+      "events": [
+        {
+          "stockId": "2347",
+          "stockName": "聯強",
+          "eventDate": "2026-05-26",
+          "forwardDate": "2026-05-29",
+          "holdDays": 3,
+          "entryClose": 84.4,
+          "exitClose": 85.9,
+          "forwardReturn": 0.017772511848341232,
+          "win": true,
+          "mom": 0.031784841075794726,
+          "turnover": 20916116,
+          "top1Share": 0.2574896866126469
+        }
+      ]
+    },
+    {
       "stockId": "2393",
       "stockName": "億光",
       "samples": 1,
@@ -385,6 +422,29 @@
           "mom": 0.04702970297029703,
           "turnover": 57894556,
           "top1Share": 0.3593689349976101
+        }
+      ]
+    },
+    {
+      "stockId": "2607",
+      "stockName": "榮運",
+      "samples": 1,
+      "winRate": 0,
+      "avgReturn": -0.012526096033402953,
+      "events": [
+        {
+          "stockId": "2607",
+          "stockName": "榮運",
+          "eventDate": "2026-05-22",
+          "forwardDate": "2026-05-28",
+          "holdDays": 3,
+          "entryClose": 47.9,
+          "exitClose": 47.3,
+          "forwardReturn": -0.012526096033402953,
+          "win": false,
+          "mom": 0.03121636167922488,
+          "turnover": 1192108,
+          "top1Share": 0.36741012004071627
         }
       ]
     },
@@ -458,6 +518,75 @@
       ]
     },
     {
+      "stockId": "2905",
+      "stockName": "三商",
+      "samples": 1,
+      "winRate": 1,
+      "avgReturn": 0.003663003663003585,
+      "events": [
+        {
+          "stockId": "2905",
+          "stockName": "三商",
+          "eventDate": "2026-05-26",
+          "forwardDate": "2026-05-29",
+          "holdDays": 3,
+          "entryClose": 13.65,
+          "exitClose": 13.7,
+          "forwardReturn": 0.003663003663003585,
+          "win": true,
+          "mom": 0.030188679245283047,
+          "turnover": 1170292,
+          "top1Share": 0.22677688996740145
+        }
+      ]
+    },
+    {
+      "stockId": "3645",
+      "stockName": "達邁",
+      "samples": 1,
+      "winRate": 0,
+      "avgReturn": -0.045871559633027525,
+      "events": [
+        {
+          "stockId": "3645",
+          "stockName": "達邁",
+          "eventDate": "2026-05-22",
+          "forwardDate": "2026-05-28",
+          "holdDays": 3,
+          "entryClose": 109,
+          "exitClose": 104,
+          "forwardReturn": -0.045871559633027525,
+          "win": false,
+          "mom": 0.02830188679245283,
+          "turnover": 19638320,
+          "top1Share": 0.28719699651983177
+        }
+      ]
+    },
+    {
+      "stockId": "4104",
+      "stockName": "佳醫",
+      "samples": 1,
+      "winRate": 1,
+      "avgReturn": 0.0014285714285713475,
+      "events": [
+        {
+          "stockId": "4104",
+          "stockName": "佳醫",
+          "eventDate": "2026-05-26",
+          "forwardDate": "2026-05-29",
+          "holdDays": 3,
+          "entryClose": 70,
+          "exitClose": 70.1,
+          "forwardReturn": 0.0014285714285713475,
+          "win": true,
+          "mom": 0.027900146842878205,
+          "turnover": 625408,
+          "top1Share": 0.20628835674133159
+        }
+      ]
+    },
+    {
       "stockId": "6192",
       "stockName": "巨路",
       "samples": 1,
@@ -477,52 +606,6 @@
           "mom": 0.05394190871369295,
           "turnover": 856396,
           "top1Share": 0.3577055094259207
-        }
-      ]
-    },
-    {
-      "stockId": "8016",
-      "stockName": "矽創",
-      "samples": 1,
-      "winRate": 1,
-      "avgReturn": 0.07308377896613191,
-      "events": [
-        {
-          "stockId": "8016",
-          "stockName": "矽創",
-          "eventDate": "2026-05-19",
-          "forwardDate": "2026-05-27",
-          "holdDays": 3,
-          "entryClose": 280.5,
-          "exitClose": 301,
-          "forwardReturn": 0.07308377896613191,
-          "win": true,
-          "mom": 0.027472527472527472,
-          "turnover": 10059324,
-          "top1Share": 0.2722848099111671
-        }
-      ]
-    },
-    {
-      "stockId": "9942",
-      "stockName": "茂順",
-      "samples": 1,
-      "winRate": 0,
-      "avgReturn": -0.0411522633744856,
-      "events": [
-        {
-          "stockId": "9942",
-          "stockName": "茂順",
-          "eventDate": "2026-05-08",
-          "forwardDate": "2026-05-19",
-          "holdDays": 3,
-          "entryClose": 121.5,
-          "exitClose": 116.5,
-          "forwardReturn": -0.0411522633744856,
-          "win": false,
-          "mom": 0.04291845493562232,
-          "turnover": 584180,
-          "top1Share": 0.2128487232746409
         }
       ]
     }
@@ -613,6 +696,20 @@
       "top1Share": 0.20102962127767435
     },
     {
+      "stockId": "1733",
+      "stockName": "五鼎",
+      "eventDate": "2026-05-26",
+      "forwardDate": "2026-05-29",
+      "holdDays": 3,
+      "entryClose": 30.05,
+      "exitClose": 29.9,
+      "forwardReturn": -0.0049916805324459945,
+      "win": false,
+      "mom": 0.030874785591766797,
+      "turnover": 1319696,
+      "top1Share": 0.21386925678788118
+    },
+    {
       "stockId": "1808",
       "stockName": "潤隆",
       "eventDate": "2026-05-18",
@@ -653,6 +750,20 @@
       "mom": 0.05702917771883285,
       "turnover": 111348472,
       "top1Share": 0.3664086840288573
+    },
+    {
+      "stockId": "2347",
+      "stockName": "聯強",
+      "eventDate": "2026-05-26",
+      "forwardDate": "2026-05-29",
+      "holdDays": 3,
+      "entryClose": 84.4,
+      "exitClose": 85.9,
+      "forwardReturn": 0.017772511848341232,
+      "win": true,
+      "mom": 0.031784841075794726,
+      "turnover": 20916116,
+      "top1Share": 0.2574896866126469
     },
     {
       "stockId": "2393",
@@ -697,6 +808,20 @@
       "top1Share": 0.3593689349976101
     },
     {
+      "stockId": "2607",
+      "stockName": "榮運",
+      "eventDate": "2026-05-22",
+      "forwardDate": "2026-05-28",
+      "holdDays": 3,
+      "entryClose": 47.9,
+      "exitClose": 47.3,
+      "forwardReturn": -0.012526096033402953,
+      "win": false,
+      "mom": 0.03121636167922488,
+      "turnover": 1192108,
+      "top1Share": 0.36741012004071627
+    },
+    {
       "stockId": "2727",
       "stockName": "王品",
       "eventDate": "2026-05-15",
@@ -739,6 +864,48 @@
       "top1Share": 0.2556979461790545
     },
     {
+      "stockId": "2905",
+      "stockName": "三商",
+      "eventDate": "2026-05-26",
+      "forwardDate": "2026-05-29",
+      "holdDays": 3,
+      "entryClose": 13.65,
+      "exitClose": 13.7,
+      "forwardReturn": 0.003663003663003585,
+      "win": true,
+      "mom": 0.030188679245283047,
+      "turnover": 1170292,
+      "top1Share": 0.22677688996740145
+    },
+    {
+      "stockId": "3645",
+      "stockName": "達邁",
+      "eventDate": "2026-05-22",
+      "forwardDate": "2026-05-28",
+      "holdDays": 3,
+      "entryClose": 109,
+      "exitClose": 104,
+      "forwardReturn": -0.045871559633027525,
+      "win": false,
+      "mom": 0.02830188679245283,
+      "turnover": 19638320,
+      "top1Share": 0.28719699651983177
+    },
+    {
+      "stockId": "4104",
+      "stockName": "佳醫",
+      "eventDate": "2026-05-26",
+      "forwardDate": "2026-05-29",
+      "holdDays": 3,
+      "entryClose": 70,
+      "exitClose": 70.1,
+      "forwardReturn": 0.0014285714285713475,
+      "win": true,
+      "mom": 0.027900146842878205,
+      "turnover": 625408,
+      "top1Share": 0.20628835674133159
+    },
+    {
       "stockId": "6192",
       "stockName": "巨路",
       "eventDate": "2026-05-18",
@@ -751,6 +918,34 @@
       "mom": 0.05394190871369295,
       "turnover": 856396,
       "top1Share": 0.3577055094259207
+    },
+    {
+      "stockId": "6805",
+      "stockName": "富世達",
+      "eventDate": "2026-05-26",
+      "forwardDate": "2026-05-29",
+      "holdDays": 3,
+      "entryClose": 1785,
+      "exitClose": 1930,
+      "forwardReturn": 0.08123249299719888,
+      "win": true,
+      "mom": 0.02881844380403458,
+      "turnover": 6890088,
+      "top1Share": 0.22551630708317955
+    },
+    {
+      "stockId": "7765",
+      "stockName": "中華資安",
+      "eventDate": "2026-05-22",
+      "forwardDate": "2026-05-28",
+      "holdDays": 3,
+      "entryClose": 249,
+      "exitClose": 247.5,
+      "forwardReturn": -0.006024096385542169,
+      "win": false,
+      "mom": 0.03319502074688797,
+      "turnover": 291288,
+      "top1Share": 0.31826220810270855
     },
     {
       "stockId": "8016",

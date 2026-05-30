@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>相對強勢 × 量能蓄勢 — 策略與回測報告</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg:#0a0f1a; --surface:#121a2b; --surface2:#1a2540; --text:#eef2f8; --muted:#8fa3bf;
+      --accent:#f59e0b; --accent2:#38bdf8; --ok:#4ade80; --warn:#fbbf24; --err:#f87171;
+      --border:rgba(255,255,255,.08);
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:"PingFang TC","Noto Sans TC",system-ui,sans-serif;background:var(--bg);color:var(--text);line-height:1.7}
+    .hero{background:linear-gradient(135deg,#1a1208 0%,#0f172a 50%,#0a0f1a 100%);padding:2.5rem 1.25rem;border-bottom:1px solid var(--border)}
+    .wrap{max-width:980px;margin:0 auto;padding:0 1.25rem 4rem}
+    h1{font-size:1.7rem;margin:0 0 .35rem}
+    .sub{color:var(--muted);margin:0}
+    .badges{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:1rem}
+    .badge{font-size:.78rem;padding:.25rem .7rem;border-radius:999px;background:var(--surface2);border:1px solid var(--border);color:var(--muted)}
+    .badge.ok{color:var(--ok);border-color:rgba(74,222,128,.35)}
+    .badge.warn{color:var(--warn);border-color:rgba(251,191,36,.35)}
+    section{margin-top:2.25rem}
+    h2{font-size:1.12rem;color:var(--accent);margin:0 0 1rem;display:flex;align-items:center;gap:.5rem}
+    h2::before{content:"";width:4px;height:1.1em;background:var(--accent);border-radius:2px}
+    .card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:1.2rem 1.35rem;margin-bottom:1rem}
+    .alert{background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.35);border-radius:12px;padding:1rem 1.2rem;color:#fde68a;font-size:.92rem}
+    .verdict{font-size:1.05rem;font-weight:700;padding:1rem 1.2rem;border-radius:12px;margin:1.25rem 0;background:rgba(251,191,36,.12);border:1px solid rgba(251,191,36,.35);color:var(--warn)}
+    .grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1rem}
+    .constraint{border-left:3px solid var(--accent2);padding-left:1rem}
+    .flow{display:flex;flex-wrap:wrap;align-items:center;gap:.45rem;margin:1rem 0}
+    .step{background:var(--surface2);border:1px solid var(--border);padding:.6rem .9rem;border-radius:10px;font-size:.85rem;flex:1;min-width:120px;text-align:center}
+    .arrow{color:var(--muted)}
+    .chart{height:280px;position:relative}
+    table{width:100%;border-collapse:collapse;font-size:.85rem}
+    th,td{padding:.5rem .6rem;border-bottom:1px solid var(--border);text-align:left}
+    th{color:var(--muted)}
+    .pos{color:var(--ok)} .neg{color:var(--err)}
+    .tabs{display:flex;flex-wrap:wrap;gap:.45rem;margin-bottom:1rem}
+    .tab{border:1px solid var(--border);background:var(--surface2);color:var(--text);padding:.4rem .95rem;border-radius:999px;cursor:pointer;font-size:.85rem}
+    .tab.active{background:rgba(245,158,11,.18);border-color:var(--accent);color:var(--accent)}
+    .yahoo-link{color:var(--accent2);text-decoration:none}
+    .yahoo-link:hover{text-decoration:underline}
+    .funnel-row{display:flex;align-items:center;gap:.75rem;margin:.35rem 0;font-size:.88rem}
+    .funnel-bar{height:22px;border-radius:6px;background:linear-gradient(90deg,var(--accent),var(--accent2))}
+    .disclaimer{font-size:.8rem;color:var(--muted);border-top:1px solid var(--border);padding-top:1.25rem;margin-top:2rem}
+    ul.compact{margin:0;padding-left:1.2rem;font-size:.9rem}
+    ul.compact li{margin-bottom:.35rem}
+  </style>
+</head>
+<body>
+<header class="hero">
+  <div class="wrap" style="padding-bottom:0">
+    <h1>相對強勢 × 量能蓄勢</h1>
+    <p class="sub">第二套動能策略 · Trader + Validator 迴圈 · 2026-05-28</p>
+    <div class="badges">
+      <span class="badge ok">持有 12–18 交易日</span>
+      <span class="badge">跑贏 0050 ETF</span>
+      <span class="badge">量能溫和放大</span>
+      <span class="badge">避開三根大紅棒</span>
+      <span class="badge warn">🟡 驗證員：部分通過（v2 定稿）</span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="alert">
+    <strong>⚠️ 資料限制</strong>：回測僅 11 個交易日（2026-04-30 → 2026-05-28），<strong>無法替代 1 年以上驗證</strong>。
+    Yahoo 奇摩股市新聞用於<strong>題材脈絡</strong>；回測數字來自本專案 Postgres（收盤價 + 分點量）。
+  </div>
+
+  <div class="verdict" id="verdictBox"></div>
+
+  <section>
+    <h2>從 Yahoo 台股讀到什麼？（Trader 研究）</h2>
+    <div class="card">
+      <ul class="compact" id="yahooList"></ul>
+      <p style="margin:1rem 0 0;font-size:.88rem;color:var(--muted)">資料來源（查詢日 2026-05-28）：</p>
+      <ul class="compact">
+        <li><a class="yahoo-link" href="https://tw.stock.yahoo.com/news/%E5%8F%B0%E8%82%A1%E7%88%86%E5%A4%A9%E9%87%8F1-56%E5%85%86%E5%85%83-%E5%A4%96%E8%B3%87%E5%8A%A0%E7%A2%BC381%E5%84%84%E5%85%83%E9%80%A3%E4%BA%94%E8%B2%B7-%E6%8E%83%E8%B2%A8%E5%8A%9B%E7%A9%8D%E9%9B%BB7-4%E8%90%AC%E5%BC%B5-104329653.html" target="_blank" rel="noopener">Yahoo — 台股天量、外資連五買、掃貨力積電</a></li>
+        <li><a class="yahoo-link" href="https://tw.stock.yahoo.com/news/%E5%8F%B0%E8%82%A1%E5%86%8D%E7%82%B8155%E5%85%86%E6%96%B0%E5%A4%A9%E9%87%8F%EF%BC%81%E7%BE%A4%E5%89%B5%E4%BA%AE%E7%87%88%E5%99%B4136%E8%90%AC%E5%BC%B5-%E7%BE%8E%E5%85%89%E7%8B%82%E9%A3%86%E5%8F%B0%E5%BB%A0%E8%A8%98%E6%86%B6%E9%AB%94%E8%B7%9F%E8%91%97%E8%A1%9D%EF%BD%9Cyahoo%E8%B2%A1%E7%B6%93%E6%8E%83%E6%8F%8F-093031802.html" target="_blank" rel="noopener">Yahoo 財經掃描 — 群創成交王、記憶體族群</a></li>
+        <li><a class="yahoo-link" href="https://www.cna.com.tw/news/afe/202605270099.aspx" target="_blank" rel="noopener">中央社 — 台股創高、聯發科聯電漲停</a></li>
+      </ul>
+      <p style="margin-top:1rem;font-size:.9rem"><strong>Trader 結論</strong>：Yahoo 熱門榜多為已噴出標的（群創 136 萬張、記憶體漲停）。第二套策略改找「<strong>相對大盤仍強，但還沒連續三根大紅棒</strong>」的標的，呼應你上次的三大原則。</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>與第一套策略的差異</h2>
+    <div class="grid3">
+      <div class="card constraint">
+        <strong>第一套 · 溫和動能 × 分點確認</strong>
+        <p style="color:var(--muted);font-size:.88rem;margin:.5rem 0 0">看分點淨買 + 主力集中度，找「有人顧」的溫和動能股。</p>
+      </div>
+      <div class="card constraint">
+        <strong>第二套 · 相對強勢 × 量能蓄勢</strong>
+        <p style="color:var(--muted);font-size:.88rem;margin:.5rem 0 0">個股 3 日漲幅必須<strong>贏 0050 至少 1%</strong>，且分點量較前 2 日溫和放大（≥8%）。</p>
+      </div>
+      <div class="card constraint">
+        <strong>共同原則</strong>
+        <p style="color:var(--muted);font-size:.88rem;margin:.5rem 0 0">不短線當沖、要有量、不追三根大紅棒；實盤持有約 2–3 週。</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>進場六關（v2 定稿）</h2>
+    <div class="flow">
+      <div class="step">① 3日動能<br>1.5%–7%</div><span class="arrow">→</span>
+      <div class="step">② 贏 0050<br>≥1%</div><span class="arrow">→</span>
+      <div class="step">③ 反追高</div><span class="arrow">→</span>
+      <div class="step">④ 量≥12萬</div><span class="arrow">→</span>
+      <div class="step">⑤ 量增≥8%</div><span class="arrow">→</span>
+      <div class="step">⑥ 淨買超</div>
+    </div>
+    <div class="card">
+      <ul class="compact">
+        <li><strong>相對強勢</strong>：個股 3 日漲幅 − 0050 3 日漲幅 ≥ 1%</li>
+        <li><strong>絕對動能</strong>：個股 3 日漲幅 1.5%～7%（有動能但非過熱）</li>
+        <li><strong>反追高</strong>：單日 ≤3%、三日合計 ≤7%、今日 ≤2%</li>
+        <li><strong>流動性</strong>：分點買賣合計 ≥ 12 萬股</li>
+        <li><strong>量能蓄勢</strong>：今日量 ≥ 前 2 日均量 × 1.08</li>
+        <li><strong>籌碼</strong>：分點淨買超 &gt; 0</li>
+      </ul>
+      <p style="margin-top:1rem;color:var(--muted);font-size:.88rem"><strong>出場</strong>：持有 12–18 交易日；停損 -8%；停利 12% 先賣半；3 日動能轉弱且跑輸 0050 則提前出場。</p>
+      <p style="color:var(--muted);font-size:.88rem"><strong>分批</strong>：40% 區間內進場 → 30% 回踩加碼 → 30% 突破 3 日高點且仍贏 0050 時補足。</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>今日觀察（2026-05-28 · v2 掃描）</h2>
+    <div class="card">
+      <p style="margin-top:0;color:var(--muted);font-size:.9rem">0050 近 3 日約 +3.3%。符合 v2 的標的：</p>
+      <table>
+        <thead><tr><th>代號</th><th>名稱</th><th>3日動能</th><th>贏0050</th><th>參考價</th><th>說明</th></tr></thead>
+        <tbody>
+          <tr><td>8271</td><td>宇瞻</td><td class="pos">5.6%</td><td class="pos">+2.3%</td><td>237</td><td>記憶體題材、量夠；Yahoo 熱門記憶體已噴，此檔相對溫和</td></tr>
+        </tbody>
+      </table>
+      <p style="font-size:.82rem;color:var(--warn);margin-bottom:0">2330、2454、6770、2344 等 Yahoo 熱門股多已連續大紅或漲停，<strong>被反追高條件擋下</strong> — 這是策略設計如此，不是漏掉。</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>Validator 三版迭代</h2>
+    <div class="card chart"><canvas id="iterChart"></canvas></div>
+    <table>
+      <thead><tr><th>版本</th><th>調整</th><th>樣本</th><th>勝率</th><th>平均報酬</th><th>判定</th></tr></thead>
+      <tbody id="iterTable"></tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>v2 篩選漏斗</h2>
+    <div class="card" id="funnel"></div>
+  </section>
+
+  <section>
+    <h2>分檔回測 Top 12</h2>
+    <div class="tabs" id="versionTabs"></div>
+    <div class="card"><table><thead><tr><th>代號</th><th>名稱</th><th>樣本</th><th>勝率</th><th>平均報酬</th></tr></thead><tbody id="stockTable"></tbody></table></div>
+  </section>
+
+  <section>
+    <h2>Yahoo 熱門股 vs 回測觸發</h2>
+    <div class="card"><table><thead><tr><th>代號</th><th>名稱</th><th>回測觸發次數</th><th>勝率</th><th>備註</th></tr></thead><tbody id="hotTable"></tbody></table></div>
+  </section>
+
+  <p class="disclaimer"><strong>風險聲明</strong>：策略研究與教育用途，非投資建議。Yahoo 新聞僅供題材參考，過去回測不代表未來績效。</p>
+</div>
+
+<script>
+const DATA = {"v1":{"verdict":"🟡 部分通過（資料區間不足，邏輯待長期驗證）","dataRange":{"start":"2026-04-30","end":"2026-05-28","tradingDays":11},"params":{"holdDays":3,"momLookback":3,"momentumMin":0.02,"momentumMax":0.08,"minRsVsBench":0.015,"maxSingleDay":0.035,"max3DaySum":0.08,"maxLastDay":0.025,"minTurnover":100000,"volBuildRatio":1.05,"requireNetBuy":true,"liveHoldTargetDays":"12–18 交易日"},"filterStats":{"mom":907,"rs":529,"chase":95,"vol":93,"build":41,"net":19,"pass":19},"overall":{"samples":19,"winRate":0.47368421052631576,"avgReturn":0.012076037513589821},"hotPool":[{"stockId":"0050","stockName":"元大台灣50","samples":0,"winRate":null,"avgReturn":null,"hasData":false},{"stockId":"2330","stockName":"台積電","samples":0,"winRate":null,"avgReturn":null,"hasData":false},{"stockId":"2454","stockName":"聯發科","samples":0,"winRate":null,"avgReturn":null,"hasData":false},{"stockId":"6770","stockName":"力積電","samples":0,"winRate":null,"avgReturn":null,"hasData":false},{"stockId":"2344","stockName":"華邦電","samples":0,"winRate":null,"avgReturn":null,"hasData":false},{"stockId":"2408","stockName":"南亞科","samples":0,"winRate":null,"avgReturn":null,"hasData":false},{"stockId":"2881","stockName":"富邦金","samples":0,"winRate":null,"avgReturn":null,"hasData":false},{"stockId":"3481","stockName":"群創","samples":0,"winRate":null,"avgReturn":null,"hasData":false},{"stockId":"2303","stockName":"聯電","samples":0,"winRate":null,"avgReturn":null,"hasData":false},{"stockId":"2317","stockName":"鴻海","samples":0,"winRate":null,"avgReturn":null,"hasData":false}],"perStock":[{"stockId":"5876","stockName":"上海商銀","samples":2,"winRate":0,"avgReturn":-0.01796048677419141,"events":[{"stockId":"5876","stockName":"上海商銀","eventDate":"2026-05-18","forwardDate":"2026-05-26","holdDays":3,"forwardReturn":-0.008793969849246089,"win":false,"mom":0.0364583333333333,"rsVs0050":0.045335617928633505,"benchMom":-0.008877284595300202,"turnover":56697380,"volBuild":1.1434132782189388},{"stockId":"5876","stockName":"上海商銀","eventDate":"2026-05-19","forwardDate":"2026-05-27","holdDays":3,"forwardReturn":-0.02712700369913673,"win":false,"mom":0.04241645244215935,"rsVs0050":0.08262263800916972,"benchMom":-0.04020618556701037,"turnover":79511612,"volBuild":1.3072815536694211}]},{"stockId":"1216","stockName":"統一","samples":1,"winRate":0,"avgReturn":-0.06149732620320848,"events":[{"stockId":"1216","stockName":"統一","eventDate":"2026-05-19","forwardDate":"2026-05-27","holdDays":3,"forwardReturn":-0.06149732620320848,"win":false,"mom":0.02185792349726768,"rsVs0050":0.06206410906427805,"benchMom":-0.04020618556701037,"turnover":85429980,"volBuild":1.2292702156433715}]},{"stockId":"1446","stockName":"宏和","samples":1,"winRate":1,"avgReturn":0.012738853503184782,"events":[{"stockId":"1446","stockName":"宏和","eventDate":"2026-05-22","forwardDate":"2026-05-28","holdDays":3,"forwardReturn":0.012738853503184782,"win":true,"mom":0.03973509933774832,"rsVs0050":0.019818956780096417,"benchMom":0.0199161425576519,"turnover":726032,"volBuild":1.4484891288300474}]},{"stockId":"1529","stockName":"樂事綠能","samples":1,"winRate":1,"avgReturn":0.047619047619047616,"events":[{"stockId":"1529","stockName":"樂事綠能","eventDate":"2026-05-22","forwardDate":"2026-05-28","holdDays":3,"forwardReturn":0.047619047619047616,"win":true,"mom":0.05,"rsVs0050":0.0300838574423481,"benchMom":0.0199161425576519,"turnover":3554788,"volBuild":3.3858606409040166}]},{"stockId":"1533","stockName":"車王電","samples":1,"winRate":1,"avgReturn":0.11866859623733725,"events":[{"stockId":"1533","stockName":"車王電","eventDate":"2026-05-19","forwardDate":"2026-05-27","holdDays":3,"forwardReturn":0.11866859623733725,"win":true,"mom":0.020679468242245074,"rsVs0050":0.06088565380925544,"benchMom":-0.04020618556701037,"turnover":2330552,"volBuild":1.168958218387922}]},{"stockId":"1537","stockName":"廣隆","samples":1,"winRate":0,"avgReturn":0,"events":[{"stockId":"1537","stockName":"廣隆","eventDate":"2026-05-15","forwardDate":"2026-05-22","holdDays":3,"forwardReturn":0,"win":false,"mom":0.028688524590163935,"rsVs0050":0.020231864970713498,"benchMom":0.008456659619450437,"turnover":646724,"volBuild":2.0901034832688046}]},{"stockId":"1732","stockName":"毛寶","samples":1,"winRate":0,"avgReturn":-0.027624309392265196,"events":[{"stockId":"1732","stockName":"毛寶","eventDate":"2026-05-19","forwardDate":"2026-05-27","holdDays":3,"forwardReturn":-0.027624309392265196,"win":false,"mom":0.0245283018867924,"rsVs0050":0.06473448745380277,"benchMom":-0.04020618556701037,"turnover":4456760,"volBuild":2.5390940124973223}]},{"stockId":"2027","stockName":"大成鋼","samples":1,"winRate":1,"avgReturn":0.05269761606022588,"events":[{"stockId":"2027","stockName":"大成鋼","eventDate":"2026-05-15","forwardDate":"2026-05-22","holdDays":3,"forwardReturn":0.05269761606022588,"win":true,"mom":0.05702917771883285,"rsVs0050":0.048572518099382414,"benchMom":0.008456659619450437,"turnover":111348472,"volBuild":1.6996183766329076}]},{"stockId":"2535","stockName":"達欣工","samples":1,"winRate":1,"avgReturn":0.03195739014647145,"events":[{"stockId":"2535","stockName":"達欣工","eventDate":"2026-05-15","forwardDate":"2026-05-22","holdDays":3,"forwardReturn":0.03195739014647145,"win":true,"mom":0.02455661664392902,"rsVs0050":0.016099957024478584,"benchMom":0.008456659619450437,"turnover":3460964,"volBuild":1.8979286533724367}]},{"stockId":"2610","stockName":"華航","samples":1,"winRate":1,"avgReturn":0.016348773841961695,"events":[{"stockId":"2610","stockName":"華航","eventDate":"2026-05-18","forwardDate":"2026-05-26","holdDays":3,"forwardReturn":0.016348773841961695,"win":true,"mom":0.022284122562674213,"rsVs0050":0.031161407157974413,"benchMom":-0.008877284595300202,"turnover":102229364,"volBuild":1.1009985665712914}]},{"stockId":"3019","stockName":"亞光","samples":1,"winRate":0,"avgReturn":0,"events":[{"stockId":"3019","stockName":"亞光","eventDate":"2026-05-19","forwardDate":"2026-05-27","holdDays":3,"forwardReturn":0,"win":false,"mom":0.03819444444444445,"rsVs0050":0.07840063001145481,"benchMom":-0.04020618556701037,"turnover":15566904,"volBuild":1.1695610231073685}]},{"stockId":"3056","stockName":"富華新","samples":1,"winRate":0,"avgReturn":-0.011070110701107036,"events":[{"stockId":"3056","stockName":"富華新","eventDate":"2026-05-18","forwardDate":"2026-05-26","holdDays":3,"forwardReturn":-0.011070110701107036,"win":false,"mom":0.026515151515151623,"rsVs0050":0.03539243611045183,"benchMom":-0.008877284595300202,"turnover":8210688,"volBuild":1.242495411777809}]}],"events":[{"stockId":"1216","stockName":"統一","eventDate":"2026-05-19","forwardDate":"2026-05-27","holdDays":3,"forwardReturn":-0.06149732620320848,"win":false,"mom":0.02185792349726768,"rsVs0050":0.06206410906427805,"benchMom":-0.04020618556701037,"turnover":85429980,"volBuild":1.2292702156433715},{"stockId":"1446","stockName":"宏和","eventDate":"2026-05-22","forwardDate":"2026-05-28","holdDays":3,"forwardReturn":0.012738853503184782,"win":true,"mom":0.03973509933774832,"rsVs0050":0.019818956780096417,"benchMom":0.0199161425576519,"turnover":726032,"volBuild":1.4484891288300474},{"stockId":"1529","stockName":"樂事綠能","eventDate":"2026-05-22","forwardDate":"2026-05-28","holdDays":3,"forwardReturn":0.047619047619047616,"win":true,"mom":0.05,"rsVs0050":0.0300838574423481,"benchMom":0.0199161425576519,"turnover":3554788,"volBuild":3.3858606409040166},{"stockId":"1533","stockName":"車王電","eventDate":"2026-05-19","forwardDate":"2026-05-27","holdDays":3,"forwardReturn":0.11866859623733725,"win":true,"mom":0.020679468242245074,"rsVs0050":0.06088565380925544,"benchMom":-0.04020618556701037,"turnover":2330552,"volBuild":1.168958218387922},{"stockId":"1537","stockName":"廣隆","eventDate":"2026-05-15","forwardDate":"2026-05-22","holdDays":3,"forwardReturn":0,"win":false,"mom":0.028688524590163935,"rsVs0050":0.020231864970713498,"benchMom":0.008456659619450437,"turnover":646724,"volBuild":2.0901034832688046},{"stockId":"1732","stockName":"毛寶","eventDate":"2026-05-19","forwardDate":"2026-05-27","holdDays":3,"forwardReturn":-0.027624309392265196,"win":false,"mom":0.0245283018867924,"rsVs0050":0.06473448745380277,"benchMom":-0.04020618556701037,"turnover":4456760,"volBuild":2.5390940124973223},{"stockId":"2027","stockName":"大成鋼","eventDate":"2026-05-15","forwardDate":"2026-05-22","holdDays":3,"forwardReturn":0.05269761606022588,"win":true,"mom":0.05702917771883285,"rsVs0050":0.048572518099382414,"benchMom":0.008456659619450437,"turnover":111348472,"volBuild":1.6996183766329076},{"stockId":"2535","stockName":"達欣工","eventDate":"2026-05-15","forwardDate":"2026-05-22","holdDays":3,"forwardReturn":0.03195739014647145,"win":true,"mom":0.02455661664392902,"rsVs0050":0.016099957024478584,"benchMom":0.008456659619450437,"turnover":3460964,"volBuild":1.8979286533724367},{"stockId":"2610","stockName":"華航","eventDate":"2026-05-18","forwardDate":"2026-05-26","holdDays":3,"forwardReturn":0.016348773841961695,"win":true,"mom":0.022284122562674213,"rsVs0050":0.031161407157974413,"benchMom":-0.008877284595300202,"turnover":102229364,"volBuild":1.1009985665712914},{"stockId":"3019","stockName":"亞光","eventDate":"2026-05-19","forwardDate":"2026-05-27","holdDays":3,"forwardReturn":0,"win":false,"mom":0.03819444444444445,"rsVs0050":0.07840063001145481,"benchMom":-0.04020618556701037,"turnover":15566904,"volBuild":1.1695610231073685},{"stockId":"3056","stockName":"富華新","eventDate":"2026-05-18","forwardDate":"2026-05-26","holdDays":3,"forwardReturn":-0.011070110701107036,"win":false,"mom":0.026515151515151623,"rsVs0050":0.03539243611045183,"benchMom":-0.008877284595300202,"turnover":8210688,"volBuild":1.242495411777809},{"stockId":"4306","stockName":"炎洲","eventDate":"2026-05-19","forwardDate":"2026-05-27","holdDays":3,"forwardReturn":0,"win":false,"mom":0.04942965779467683,"rsVs0050":0.0896358433616872,"benchMom":-0.04020618556701037,"turnover":12034408,"volBuild":1.4165082947791068},{"stockId":"4904","stockName":"遠傳","eventDate":"2026-05-19","forwardDate":"2026-05-27","holdDays":3,"forwardReturn":-0.052040816326530556,"win":false,"mom":0.02189781021897804,"rsVs0050":0.06210399578598841,"benchMom":-0.04020618556701037,"turnover":43206800,"volBuild":1.6038912593294101},{"stockId":"5522","stockName":"遠雄","eventDate":"2026-05-18","forwardDate":"2026-05-26","holdDays":3,"forwardReturn":-0.01523545706371203,"win":false,"mom":0.04486251808972516,"rsVs0050":0.053739802685025366,"benchMom":-0.008877284595300202,"turnover":9100564,"volBuild":2.6000125707102453},{"stockId":"5876","stockName":"上海商銀","eventDate":"2026-05-18","forwardDate":"2026-05-26","holdDays":3,"forwardReturn":-0.008793969849246089,"win":false,"mom":0.0364583333333333,"rsVs0050":0.045335617928633505,"benchMom":-0.008877284595300202,"turnover":56697380,"volBuild":1.1434132782189388},{"stockId":"5876","stockName":"上海商銀","eventDate":"2026-05-19","forwardDate":"2026-05-27","holdDays":3,"forwardReturn":-0.02712700369913673,"win":false,"mom":0.04241645244215935,"rsVs0050":0.08262263800916972,"benchMom":-0.04020618556701037,"turnover":79511612,"volBuild":1.3072815536694211},{"stockId":"6277","stockName":"宏正","eventDate":"2026-05-18","forwardDate":"2026-05-26","holdDays":3,"forwardReturn":0.05978260869565226,"win":true,"mom":0.032258064516129,"rsVs0050":0.0411353491114292,"benchMom":-0.008877284595300202,"turnover":2916896,"volBuild":1.8880099005927669},{"stockId":"6585","stockName":"鼎基","eventDate":"2026-05-22","forwardDate":"2026-05-28","holdDays":3,"forwardReturn":0.01993704092339985,"win":true,"mom":0.03812636165577342,"rsVs0050":0.018210219098121518,"benchMom":0.0199161425576519,"turnover":517644,"volBuild":1.3475259277770837},{"stockId":"8016","stockName":"矽創","eventDate":"2026-05-19","forwardDate":"2026-05-27","holdDays":3,"forwardReturn":0.07308377896613191,"win":true,"mom":0.027472527472527472,"rsVs0050":0.06767871303953785,"benchMom":-0.04020618556701037,"turnover":10059324,"volBuild":1.107216099959935}]},"v2":{"verdict":"🟡 部分通過","dataRange":{"start":"2026-04-30","end":"2026-05-28","tradingDays":11},"params":{"holdDays":3,"momLookback":3,"momentumMin":0.015,"momentumMax":0.07,"minRsVsBench":0.01,"maxSingleDay":0.03,"max3DaySum":0.07,"maxLastDay":0.02,"minTurnover":120000,"volBuildRatio":1.08,"requireNetBuy":true,"liveHoldTargetDays":"12–18 交易日"},"filterStats":{"mom":925,"rs":519,"chase":82,"vol":80,"build":35,"net":15,"pass":15},"overall":{"samples":15,"winRate":0.5333333333333333,"avgReturn":0.017217003146697586},"hotPool":[{"stockId":"0050","stockName":"元大台灣50","samples":0,"winRate":null,"avgReturn":null,"hasData":false},{"stockId":"2330","stockName":"台積電","samples":0,"winRate":null,"avgReturn":null,"hasData":false},{"stockId":"2454","stockName":"聯發科","samples":0,"winRate":null,"avgReturn":null,"hasData":false},{"stockId":"6770","stockName":"力積電","samples":0,"winRate":null,"avgReturn":null,"hasData":false},{"stockId":"2344","stockName":"華邦電","samples":0,"winRate":null,"avgReturn":null,"hasData":false},{"stockId":"2408","stockName":"南亞科","samples":0,"winRate":null,"avgReturn":null,"hasData":false},{"stockId":"2881","stockName":"富邦金","samples":0,"winRate":null,"avgReturn":null,"hasData":false},{"stockId":"3481","stockName":"群創","samples":0,"winRate":null,"avgReturn":null,"hasData":false},{"stockId":"2303","stockName":"聯電","samples":0,"winRate":null,"avgReturn":null,"hasData":false},{"stockId":"2317","stockName":"鴻海","samples":0,"winRate":null,"avgReturn":null,"hasData":false}],"perStock":[{"stockId":"1210","stockName":"大成","samples":1,"winRate":0,"avgReturn":-0.013257575757575678,"events":[{"stockId":"1210","stockName":"大成","eventDate":"2026-05-18","forwardDate":"2026-05-26","holdDays":3,"forwardReturn":-0.013257575757575678,"win":false,"mom":0.01538461538461533,"rsVs0050":0.024261899979915534,"benchMom":-0.008877284595300202,"turnover":11579564,"volBuild":1.105935410176135}]},{"stockId":"1446","stockName":"宏和","samples":1,"winRate":1,"avgReturn":0.012738853503184782,"events":[{"stockId":"1446","stockName":"宏和","eventDate":"2026-05-22","forwardDate":"2026-05-28","holdDays":3,"forwardReturn":0.012738853503184782,"win":true,"mom":0.03973509933774832,"rsVs0050":0.019818956780096417,"benchMom":0.0199161425576519,"turnover":726032,"volBuild":1.4484891288300474}]},{"stockId":"1533","stockName":"車王電","samples":1,"winRate":1,"avgReturn":0.11866859623733725,"events":[{"stockId":"1533","stockName":"車王電","eventDate":"2026-05-19","forwardDate":"2026-05-27","holdDays":3,"forwardReturn":0.11866859623733725,"win":true,"mom":0.020679468242245074,"rsVs0050":0.06088565380925544,"benchMom":-0.04020618556701037,"turnover":2330552,"volBuild":1.168958218387922}]},{"stockId":"1713","stockName":"國化","samples":1,"winRate":0,"avgReturn":-0.00208768267223385,"events":[{"stockId":"1713","stockName":"國化","eventDate":"2026-05-15","forwardDate":"2026-05-22","holdDays":3,"forwardReturn":-0.00208768267223385,"win":false,"mom":0.022411953041622138,"rsVs0050":0.013955293422171701,"benchMom":0.008456659619450437,"turnover":884728,"volBuild":1.455369744664471}]},{"stockId":"2027","stockName":"大成鋼","samples":1,"winRate":1,"avgReturn":0.05269761606022588,"events":[{"stockId":"2027","stockName":"大成鋼","eventDate":"2026-05-15","forwardDate":"2026-05-22","holdDays":3,"forwardReturn":0.05269761606022588,"win":true,"mom":0.05702917771883285,"rsVs0050":0.048572518099382414,"benchMom":0.008456659619450437,"turnover":111348472,"volBuild":1.6996183766329076}]},{"stockId":"2363","stockName":"矽統","samples":1,"winRate":1,"avgReturn":0.10413223140495863,"events":[{"stockId":"2363","stockName":"矽統","eventDate":"2026-05-19","forwardDate":"2026-05-27","holdDays":3,"forwardReturn":0.10413223140495863,"win":true,"mom":0.018518518518518542,"rsVs0050":0.058724704085528906,"benchMom":-0.04020618556701037,"turnover":35513836,"volBuild":1.0942926308661585}]},{"stockId":"2429","stockName":"銘旺科","samples":1,"winRate":0,"avgReturn":-0.0841209829867674,"events":[{"stockId":"2429","stockName":"銘旺科","eventDate":"2026-05-15","forwardDate":"2026-05-22","holdDays":3,"forwardReturn":-0.0841209829867674,"win":false,"mom":0.01926782273603083,"rsVs0050":0.010811163116580393,"benchMom":0.008456659619450437,"turnover":7847332,"volBuild":5.530262582982142}]},{"stockId":"2535","stockName":"達欣工","samples":1,"winRate":1,"avgReturn":0.03195739014647145,"events":[{"stockId":"2535","stockName":"達欣工","eventDate":"2026-05-15","forwardDate":"2026-05-22","holdDays":3,"forwardReturn":0.03195739014647145,"win":true,"mom":0.02455661664392902,"rsVs0050":0.016099957024478584,"benchMom":0.008456659619450437,"turnover":3460964,"volBuild":1.8979286533724367}]},{"stockId":"3019","stockName":"亞光","samples":1,"winRate":0,"avgReturn":0,"events":[{"stockId":"3019","stockName":"亞光","eventDate":"2026-05-19","forwardDate":"2026-05-27","holdDays":3,"forwardReturn":0,"win":false,"mom":0.03819444444444445,"rsVs0050":0.07840063001145481,"benchMom":-0.04020618556701037,"turnover":15566904,"volBuild":1.1695610231073685}]},{"stockId":"4306","stockName":"炎洲","samples":1,"winRate":0,"avgReturn":0,"events":[{"stockId":"4306","stockName":"炎洲","eventDate":"2026-05-19","forwardDate":"2026-05-27","holdDays":3,"forwardReturn":0,"win":false,"mom":0.04942965779467683,"rsVs0050":0.0896358433616872,"benchMom":-0.04020618556701037,"turnover":12034408,"volBuild":1.4165082947791068}]},{"stockId":"4904","stockName":"遠傳","samples":1,"winRate":0,"avgReturn":-0.052040816326530556,"events":[{"stockId":"4904","stockName":"遠傳","eventDate":"2026-05-19","forwardDate":"2026-05-27","holdDays":3,"forwardReturn":-0.052040816326530556,"win":false,"mom":0.02189781021897804,"rsVs0050":0.06210399578598841,"benchMom":-0.04020618556701037,"turnover":43206800,"volBuild":1.6038912593294101}]},{"stockId":"6464","stockName":"台數科","samples":1,"winRate":1,"avgReturn":0.0025706940874036356,"events":[{"stockId":"6464","stockName":"台數科","eventDate":"2026-05-18","forwardDate":"2026-05-26","holdDays":3,"forwardReturn":0.0025706940874036356,"win":true,"mom":0.01832460732984282,"rsVs0050":0.027201891925143024,"benchMom":-0.008877284595300202,"turnover":456476,"volBuild":1.4844265227147084}]}],"events":[{"stockId":"1210","stockName":"大成","eventDate":"2026-05-18","forwardDate":"2026-05-26","holdDays":3,"forwardReturn":-0.013257575757575678,"win":false,"mom":0.01538461538461533,"rsVs0050":0.024261899979915534,"benchMom":-0.008877284595300202,"turnover":11579564,"volBuild":1.105935410176135},{"stockId":"1446","stockName":"宏和","eventDate":"2026-05-22","forwardDate":"2026-05-28","holdDays":3,"forwardReturn":0.012738853503184782,"win":true,"mom":0.03973509933774832,"rsVs0050":0.019818956780096417,"benchMom":0.0199161425576519,"turnover":726032,"volBuild":1.4484891288300474},{"stockId":"1533","stockName":"車王電","eventDate":"2026-05-19","forwardDate":"2026-05-27","holdDays":3,"forwardReturn":0.11866859623733725,"win":true,"mom":0.020679468242245074,"rsVs0050":0.06088565380925544,"benchMom":-0.04020618556701037,"turnover":2330552,"volBuild":1.168958218387922},{"stockId":"1713","stockName":"國化","eventDate":"2026-05-15","forwardDate":"2026-05-22","holdDays":3,"forwardReturn":-0.00208768267223385,"win":false,"mom":0.022411953041622138,"rsVs0050":0.013955293422171701,"benchMom":0.008456659619450437,"turnover":884728,"volBuild":1.455369744664471},{"stockId":"2027","stockName":"大成鋼","eventDate":"2026-05-15","forwardDate":"2026-05-22","holdDays":3,"forwardReturn":0.05269761606022588,"win":true,"mom":0.05702917771883285,"rsVs0050":0.048572518099382414,"benchMom":0.008456659619450437,"turnover":111348472,"volBuild":1.6996183766329076},{"stockId":"2363","stockName":"矽統","eventDate":"2026-05-19","forwardDate":"2026-05-27","holdDays":3,"forwardReturn":0.10413223140495863,"win":true,"mom":0.018518518518518542,"rsVs0050":0.058724704085528906,"benchMom":-0.04020618556701037,"turnover":35513836,"volBuild":1.0942926308661585},{"stockId":"2429","stockName":"銘旺科","eventDate":"2026-05-15","forwardDate":"2026-05-22","holdDays":3,"forwardReturn":-0.0841209829867674,"win":false,"mom":0.01926782273603083,"rsVs0050":0.010811163116580393,"benchMom":0.008456659619450437,"turnover":7847332,"volBuild":5.530262582982142},{"stockId":"2535","stockName":"達欣工","eventDate":"2026-05-15","forwardDate":"2026-05-22","holdDays":3,"forwardReturn":0.03195739014647145,"win":true,"mom":0.02455661664392902,"rsVs0050":0.016099957024478584,"benchMom":0.008456659619450437,"turnover":3460964,"volBuild":1.8979286533724367},{"stockId":"3019","stockName":"亞光","eventDate":"2026-05-19","forwardDate":"2026-05-27","holdDays":3,"forwardReturn":0,"win":false,"mom":0.03819444444444445,"rsVs0050":0.07840063001145481,"benchMom":-0.04020618556701037,"turnover":15566904,"volBuild":1.1695610231073685},{"stockId":"4306","stockName":"炎洲","eventDate":"2026-05-19","forwardDate":"2026-05-27","holdDays":3,"forwardReturn":0,"win":false,"mom":0.04942965779467683,"rsVs0050":0.0896358433616872,"benchMom":-0.04020618556701037,"turnover":12034408,"volBuild":1.4165082947791068},{"stockId":"4904","stockName":"遠傳","eventDate":"2026-05-19","forwardDate":"2026-05-27","holdDays":3,"forwardReturn":-0.052040816326530556,"win":false,"mom":0.02189781021897804,"rsVs0050":0.06210399578598841,"benchMom":-0.04020618556701037,"turnover":43206800,"volBuild":1.6038912593294101},{"stockId":"6464","stockName":"台數科","eventDate":"2026-05-18","forwardDate":"2026-05-26","holdDays":3,"forwardReturn":0.0025706940874036356,"win":true,"mom":0.01832460732984282,"rsVs0050":0.027201891925143024,"benchMom":-0.008877284595300202,"turnover":456476,"volBuild":1.4844265227147084},{"stockId":"6585","stockName":"鼎基","eventDate":"2026-05-22","forwardDate":"2026-05-28","holdDays":3,"forwardReturn":0.01993704092339985,"win":true,"mom":0.03812636165577342,"rsVs0050":0.018210219098121518,"benchMom":0.0199161425576519,"turnover":517644,"volBuild":1.3475259277770837},{"stockId":"7765","stockName":"中華資安","eventDate":"2026-05-22","forwardDate":"2026-05-28","holdDays":3,"forwardReturn":-0.006024096385542169,"win":false,"mom":0.03319502074688797,"rsVs0050":0.013278878189236065,"benchMom":0.0199161425576519,"turnover":291288,"volBuild":1.587660107919551},{"stockId":"8016","stockName":"矽創","eventDate":"2026-05-19","forwardDate":"2026-05-27","holdDays":3,"forwardReturn":0.07308377896613191,"win":true,"mom":0.027472527472527472,"rsVs0050":0.06767871303953785,"benchMom":-0.04020618556701037,"turnover":10059324,"volBuild":1.107216099959935}]},"v3":{"verdict":"🟡 部分通過","dataRange":{"start":"2026-04-30","end":"2026-05-28","tradingDays":11},"params":{"holdDays":3,"momLookback":3,"momentumMin":0.02,"momentumMax":0.065,"minRsVsBench":0.012,"maxSingleDay":0.028,"max3DaySum":0.065,"maxLastDay":0.018,"minTurnover":150000,"volBuildRatio":1.1,"requireNetBuy":true,"minNetRatio":0.02,"liveHoldTargetDays":"12–18 交易日"},"filterStats":{"mom":741,"rs":437,"chase":48,"vol":48,"build":23,"net":7,"pass":7},"overall":{"samples":7,"winRate":0.5714285714285714,"avgReturn":0.02588774259116564},"hotPool":[{"stockId":"0050","stockName":"元大台灣50","samples":0,"winRate":null,"avgReturn":null,"hasData":false},{"stockId":"2330","stockName":"台積電","samples":0,"winRate":null,"avgReturn":null,"hasData":false},{"stockId":"2454","stockName":"聯發科","samples":0,"winRate":null,"avgReturn":null,"hasData":false},{"stockId":"6770","stockName":"力積電","samples":0,"winRate":null,"avgReturn":null,"hasData":false},{"stockId":"2344","stockName":"華邦電","samples":0,"winRate":null,"avgReturn":null,"hasData":false},{"stockId":"2408","stockName":"南亞科","samples":0,"winRate":null,"avgReturn":null,"hasData":false},{"stockId":"2881","stockName":"富邦金","samples":0,"winRate":null,"avgReturn":null,"hasData":false},{"stockId":"3481","stockName":"群創","samples":0,"winRate":null,"avgReturn":null,"hasData":false},{"stockId":"2303","stockName":"聯電","samples":0,"winRate":null,"avgReturn":null,"hasData":false},{"stockId":"2317","stockName":"鴻海","samples":0,"winRate":null,"avgReturn":null,"hasData":false}],"perStock":[{"stockId":"1446","stockName":"宏和","samples":1,"winRate":1,"avgReturn":0.012738853503184782,"events":[{"stockId":"1446","stockName":"宏和","eventDate":"2026-05-22","forwardDate":"2026-05-28","holdDays":3,"forwardReturn":0.012738853503184782,"win":true,"mom":0.03973509933774832,"rsVs0050":0.019818956780096417,"benchMom":0.0199161425576519,"turnover":726032,"volBuild":1.4484891288300474}]},{"stockId":"1533","stockName":"車王電","samples":1,"winRate":1,"avgReturn":0.11866859623733725,"events":[{"stockId":"1533","stockName":"車王電","eventDate":"2026-05-19","forwardDate":"2026-05-27","holdDays":3,"forwardReturn":0.11866859623733725,"win":true,"mom":0.020679468242245074,"rsVs0050":0.06088565380925544,"benchMom":-0.04020618556701037,"turnover":2330552,"volBuild":1.168958218387922}]},{"stockId":"1713","stockName":"國化","samples":1,"winRate":0,"avgReturn":-0.00208768267223385,"events":[{"stockId":"1713","stockName":"國化","eventDate":"2026-05-15","forwardDate":"2026-05-22","holdDays":3,"forwardReturn":-0.00208768267223385,"win":false,"mom":0.022411953041622138,"rsVs0050":0.013955293422171701,"benchMom":0.008456659619450437,"turnover":884728,"volBuild":1.455369744664471}]},{"stockId":"2535","stockName":"達欣工","samples":1,"winRate":1,"avgReturn":0.03195739014647145,"events":[{"stockId":"2535","stockName":"達欣工","eventDate":"2026-05-15","forwardDate":"2026-05-22","holdDays":3,"forwardReturn":0.03195739014647145,"win":true,"mom":0.02455661664392902,"rsVs0050":0.016099957024478584,"benchMom":0.008456659619450437,"turnover":3460964,"volBuild":1.8979286533724367}]},{"stockId":"3019","stockName":"亞光","samples":1,"winRate":0,"avgReturn":0,"events":[{"stockId":"3019","stockName":"亞光","eventDate":"2026-05-19","forwardDate":"2026-05-27","holdDays":3,"forwardReturn":0,"win":false,"mom":0.03819444444444445,"rsVs0050":0.07840063001145481,"benchMom":-0.04020618556701037,"turnover":15566904,"volBuild":1.1695610231073685}]},{"stockId":"4306","stockName":"炎洲","samples":1,"winRate":0,"avgReturn":0,"events":[{"stockId":"4306","stockName":"炎洲","eventDate":"2026-05-19","forwardDate":"2026-05-27","holdDays":3,"forwardReturn":0,"win":false,"mom":0.04942965779467683,"rsVs0050":0.0896358433616872,"benchMom":-0.04020618556701037,"turnover":12034408,"volBuild":1.4165082947791068}]},{"stockId":"6585","stockName":"鼎基","samples":1,"winRate":1,"avgReturn":0.01993704092339985,"events":[{"stockId":"6585","stockName":"鼎基","eventDate":"2026-05-22","forwardDate":"2026-05-28","holdDays":3,"forwardReturn":0.01993704092339985,"win":true,"mom":0.03812636165577342,"rsVs0050":0.018210219098121518,"benchMom":0.0199161425576519,"turnover":517644,"volBuild":1.3475259277770837}]}],"events":[{"stockId":"1446","stockName":"宏和","eventDate":"2026-05-22","forwardDate":"2026-05-28","holdDays":3,"forwardReturn":0.012738853503184782,"win":true,"mom":0.03973509933774832,"rsVs0050":0.019818956780096417,"benchMom":0.0199161425576519,"turnover":726032,"volBuild":1.4484891288300474},{"stockId":"1533","stockName":"車王電","eventDate":"2026-05-19","forwardDate":"2026-05-27","holdDays":3,"forwardReturn":0.11866859623733725,"win":true,"mom":0.020679468242245074,"rsVs0050":0.06088565380925544,"benchMom":-0.04020618556701037,"turnover":2330552,"volBuild":1.168958218387922},{"stockId":"1713","stockName":"國化","eventDate":"2026-05-15","forwardDate":"2026-05-22","holdDays":3,"forwardReturn":-0.00208768267223385,"win":false,"mom":0.022411953041622138,"rsVs0050":0.013955293422171701,"benchMom":0.008456659619450437,"turnover":884728,"volBuild":1.455369744664471},{"stockId":"2535","stockName":"達欣工","eventDate":"2026-05-15","forwardDate":"2026-05-22","holdDays":3,"forwardReturn":0.03195739014647145,"win":true,"mom":0.02455661664392902,"rsVs0050":0.016099957024478584,"benchMom":0.008456659619450437,"turnover":3460964,"volBuild":1.8979286533724367},{"stockId":"3019","stockName":"亞光","eventDate":"2026-05-19","forwardDate":"2026-05-27","holdDays":3,"forwardReturn":0,"win":false,"mom":0.03819444444444445,"rsVs0050":0.07840063001145481,"benchMom":-0.04020618556701037,"turnover":15566904,"volBuild":1.1695610231073685},{"stockId":"4306","stockName":"炎洲","eventDate":"2026-05-19","forwardDate":"2026-05-27","holdDays":3,"forwardReturn":0,"win":false,"mom":0.04942965779467683,"rsVs0050":0.0896358433616872,"benchMom":-0.04020618556701037,"turnover":12034408,"volBuild":1.4165082947791068},{"stockId":"6585","stockName":"鼎基","eventDate":"2026-05-22","forwardDate":"2026-05-28","holdDays":3,"forwardReturn":0.01993704092339985,"win":true,"mom":0.03812636165577342,"rsVs0050":0.018210219098121518,"benchMom":0.0199161425576519,"turnover":517644,"volBuild":1.3475259277770837}]},"final":"v2","yahooContext":["外資連續買超、AI/記憶體題材發酵（Yahoo 財經 2026-05-27）","熱門成交榜常見群創、力積電、華邦電 — 本策略刻意避開已噴出標的","大盤創高時改找「跑贏 0050 但還沒連續大紅棒」的標的"]};
+const pct = x => x == null ? '—' : (x*100).toFixed(1)+'%';
+const pctS = x => { if(x==null)return '—'; const p=(x*100).toFixed(2); return (x>=0?'+':'')+p+'%'; };
+
+document.getElementById('verdictBox').textContent = '🟡 最終判定（v2）：' + DATA.v2.verdict + ' — 樣本 '+DATA.v2.overall.samples+' 筆，勝率 '+pct(DATA.v2.overall.winRate)+'，平均報酬 '+pctS(DATA.v2.overall.avgReturn);
+document.getElementById('yahooList').innerHTML = ["外資連續買超、AI/記憶體題材發酵（Yahoo 財經 2026-05-27）","熱門成交榜常見群創、力積電、華邦電 — 本策略刻意避開已噴出標的","大盤創高時改找「跑贏 0050 但還沒連續大紅棒」的標的"].map(x=>'<li>'+x+'</li>').join('');
+
+const meta = { v1:'初版：RS≥1.5%、量增5%', v2:'定稿：略放寬動能、量增8%（樣本較穩）', v3:'收緊：量增10%+淨買比2%（樣本少但勝率高）' };
+document.getElementById('iterTable').innerHTML = ['v1','v2','v3'].map(k => {
+  const o = DATA[k].overall;
+  return '<tr><td>'+k+'</td><td>'+meta[k]+'</td><td>'+o.samples+'</td><td>'+pct(o.winRate)+'</td><td class="'+(o.avgReturn>=0?'pos':'neg')+'">'+pctS(o.avgReturn)+'</td><td>'+DATA[k].verdict+'</td></tr>';
+}).join('');
+
+new Chart(document.getElementById('iterChart'), {
+  type:'bar',
+  data:{
+    labels:['v1','v2','v3'],
+    datasets:[
+      { label:'勝率%', data:['v1','v2','v3'].map(k=>DATA[k].overall.winRate*100), backgroundColor:'rgba(245,158,11,.75)' },
+      { label:'平均報酬%', data:['v1','v2','v3'].map(k=>DATA[k].overall.avgReturn*100), backgroundColor:'rgba(56,189,248,.75)' }
+    ]
+  },
+  options:{ responsive:true, maintainAspectRatio:false }
+});
+
+const fs = DATA.v2.filterStats;
+const steps = [['3日動能',fs.mom],['贏0050',fs.rs],['反追高',fs.chase],['量能門檻',fs.vol],['量增蓄勢',fs.build],['淨買超',fs.net],['最終',fs.pass]];
+const mx = fs.mom||1;
+document.getElementById('funnel').innerHTML = steps.map(([l,n]) =>
+  '<div class="funnel-row"><span style="width:100px">'+l+'</span><div style="flex:1;background:var(--surface2);border-radius:6px"><div class="funnel-bar" style="width:'+(n/mx*100).toFixed(1)+'%"></div></div><span style="width:40px;text-align:right">'+n+'</span></div>'
+).join('');
+
+const hotNotes = {
+  '0050':'基準ETF','2330':'Yahoo權值核心；多已過熱','2454':'常漲停，被反追高擋','6770':'外資大買但常噴出',
+  '2344':'記憶體漲停題材','2408':'同上','2881':'金融，RS常不足','3481':'成交136萬張，已過熱','2303':'聯電漲停','2317':'鴻海，動能偏溫'
+};
+document.getElementById('hotTable').innerHTML = DATA.v2.hotPool.map(h =>
+  '<tr><td>'+h.stockId+'</td><td>'+h.stockName+'</td><td>'+(h.samples||0)+'</td><td>'+pct(h.winRate)+'</td><td>'+(hotNotes[h.stockId]||'—')+'</td></tr>'
+).join('');
+
+let cur='v2';
+function renderStock(){ document.getElementById('stockTable').innerHTML = DATA[cur].perStock.map(s =>
+  '<tr><td>'+s.stockId+'</td><td>'+s.stockName+'</td><td>'+s.samples+'</td><td>'+pct(s.winRate)+'</td><td class="'+(s.avgReturn>=0?'pos':'neg')+'">'+pctS(s.avgReturn)+'</td></tr>'
+).join(''); }
+document.getElementById('versionTabs').innerHTML = ['v1','v2','v3'].map(k=>'<button class="tab'+(k===cur?' active':'')+'" data-v="'+k+'">'+k+'</button>').join('');
+document.getElementById('versionTabs').onclick = e => { if(!e.target.dataset.v)return; cur=e.target.dataset.v; document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.v===cur)); renderStock(); };
+renderStock();
+</script>
+</body>
+</html>

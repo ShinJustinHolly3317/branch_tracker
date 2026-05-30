@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { api } from '../api'
-import type { ShortTermRecommendationsResponse, UserFavorite } from '@twbbd/shared'
+import type { AnalysisRunDetail, AnalysisRunListItem, ShortTermRecommendationsResponse, UserFavorite } from '@twbbd/shared'
 import { RecommendationCard } from '../components/RecommendationCard'
 import { FavoriteCard } from '../components/FavoriteCard'
+import { AnalysisRunDetailPanel, AnalysisRunList } from '../components/AnalysisRunPanel'
 
-type Tab = 'recommend' | 'favorites'
+type Tab = 'recommend' | 'favorites' | 'history'
 
 export function RecommendationsPage() {
   const [tab, setTab] = useState<Tab>('recommend')
@@ -14,6 +15,13 @@ export function RecommendationsPage() {
   const [loadingFav, setLoadingFav] = useState(false)
   const [hint, setHint] = useState<string | null>(null)
   const [savingId, setSavingId] = useState<string | null>(null)
+  const [analysisRuns, setAnalysisRuns] = useState<AnalysisRunListItem[]>([])
+  const [selectedRunId, setSelectedRunId] = useState<string | null>(null)
+  const [runDetail, setRunDetail] = useState<AnalysisRunDetail | null>(null)
+  const [loadingRuns, setLoadingRuns] = useState(false)
+  const [loadingRunDetail, setLoadingRunDetail] = useState(false)
+  const [runsError, setRunsError] = useState<string | null>(null)
+  const [runDetailError, setRunDetailError] = useState<string | null>(null)
 
   const favoriteIds = useMemo(() => new Set(favorites.map((f) => f.stockId)), [favorites])
 
@@ -46,10 +54,55 @@ export function RecommendationsPage() {
     }
   }, [])
 
+  const loadAnalysisRuns = useCallback(async () => {
+    setLoadingRuns(true)
+    setRunsError(null)
+    try {
+      const r = await api.listAnalysisRuns(30)
+      setAnalysisRuns(r.items)
+      setSelectedRunId((prev) => prev ?? r.items[0]?.id ?? null)
+    } catch {
+      setRunsError('無法載入分析紀錄，請確認 API 已啟動。')
+      setAnalysisRuns([])
+    } finally {
+      setLoadingRuns(false)
+    }
+  }, [])
+
   useEffect(() => {
     void loadRecommendations()
     void loadFavorites()
-  }, [loadRecommendations, loadFavorites])
+    void loadAnalysisRuns()
+  }, [loadRecommendations, loadFavorites, loadAnalysisRuns])
+
+  useEffect(() => {
+    if (!selectedRunId) {
+      setRunDetail(null)
+      setRunDetailError(null)
+      return
+    }
+    let cancelled = false
+    setLoadingRunDetail(true)
+    setRunDetail(null)
+    setRunDetailError(null)
+    api
+      .getAnalysisRun(selectedRunId)
+      .then((d) => {
+        if (!cancelled) setRunDetail(d)
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setRunDetail(null)
+          setRunDetailError('無法載入這筆分析報告。')
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingRunDetail(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [selectedRunId])
 
   async function handleAddFavorite(stockId: string) {
     const item = recData?.items.find((x) => x.stockId === stockId)
@@ -101,7 +154,10 @@ export function RecommendationsPage() {
           role="tab"
           className={tab === 'recommend' ? 'rec-tab active' : 'rec-tab'}
           aria-selected={tab === 'recommend'}
-          onClick={() => setTab('recommend')}
+          onClick={() => {
+            setTab('recommend')
+            setHint(null)
+          }}
         >
           今日推薦
         </button>
@@ -110,9 +166,24 @@ export function RecommendationsPage() {
           role="tab"
           className={tab === 'favorites' ? 'rec-tab active' : 'rec-tab'}
           aria-selected={tab === 'favorites'}
-          onClick={() => setTab('favorites')}
+          onClick={() => {
+            setTab('favorites')
+            setHint(null)
+          }}
         >
           我的最愛{favorites.length ? ` (${favorites.length})` : ''}
+        </button>
+        <button
+          type="button"
+          role="tab"
+          className={tab === 'history' ? 'rec-tab active' : 'rec-tab'}
+          aria-selected={tab === 'history'}
+          onClick={() => {
+            setTab('history')
+            setHint(null)
+          }}
+        >
+          分析紀錄{analysisRuns.length ? ` (${analysisRuns.length})` : ''}
         </button>
       </div>
 
@@ -153,7 +224,7 @@ export function RecommendationsPage() {
             </p>
           ) : null}
         </section>
-      ) : (
+      ) : tab === 'favorites' ? (
         <section className="rec-section">
           <p className="muted" style={{ marginBottom: 16 }}>
             最愛清單保存在伺服器（以本機瀏覽器 ID 區分）。換電腦或清除瀏覽器資料會看不到同一清單。
@@ -173,6 +244,31 @@ export function RecommendationsPage() {
               ))}
             </div>
           )}
+        </section>
+      ) : (
+        <section className="rec-section">
+          <div className="row" style={{ marginBottom: 16 }}>
+            <button type="button" disabled={loadingRuns} onClick={() => void loadAnalysisRuns()}>
+              {loadingRuns ? '更新中…' : '重新載入'}
+            </button>
+            <span className="muted">Cursor Cloud 排程或手動跑完會寫入資料庫</span>
+          </div>
+          <div className="analysis-run-layout">
+            {runsError ? <div className="hint-warn">{runsError}</div> : null}
+            <AnalysisRunList
+              items={analysisRuns}
+              selectedId={selectedRunId}
+              loading={loadingRuns}
+              onSelect={setSelectedRunId}
+            />
+            {analysisRuns.length > 0 ? (
+              <AnalysisRunDetailPanel
+                detail={runDetail}
+                loading={loadingRunDetail}
+                error={runDetailError}
+              />
+            ) : null}
+          </div>
         </section>
       )}
     </div>

@@ -2,6 +2,13 @@
 
 > 新的條目加在最上面。Subagent 的「Changelog 教訓」區從這裡 sync。
 
+## 2026-05-30 — Team Trading 排程改 Cursor Cloud + 分析紀錄 DB/UI
+
+- **來源**：team-dev / user
+- **功能**：刪 GH Actions PR 流程；`team_trading_run` 表；`npm run team-trading` 寫 DB；`GET /analysis-runs`；推薦頁「分析紀錄」分 tab
+- **QA 修正**：analysis-runs 用 `safeParse` 防 crash；detail fetch 失敗清 stale；history 獨立 error state
+- **Agent 規則**：排程結果存 DB 供 UI 查，不要用開 PR 當報告載體；fetch 失敗必須清掉舊 detail
+
 ## 2026-05-27 — Performance / Stock 個股區間漲跌
 
 - **來源**：team-dev / user

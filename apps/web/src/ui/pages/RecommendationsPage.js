@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api } from '../api';
 import { RecommendationCard } from '../components/RecommendationCard';
 import { FavoriteCard } from '../components/FavoriteCard';
+import { AnalysisRunDetailPanel, AnalysisRunList } from '../components/AnalysisRunPanel';
 export function RecommendationsPage() {
     const [tab, setTab] = useState('recommend');
     const [recData, setRecData] = useState(null);
@@ -11,6 +12,13 @@ export function RecommendationsPage() {
     const [loadingFav, setLoadingFav] = useState(false);
     const [hint, setHint] = useState(null);
     const [savingId, setSavingId] = useState(null);
+    const [analysisRuns, setAnalysisRuns] = useState([]);
+    const [selectedRunId, setSelectedRunId] = useState(null);
+    const [runDetail, setRunDetail] = useState(null);
+    const [loadingRuns, setLoadingRuns] = useState(false);
+    const [loadingRunDetail, setLoadingRunDetail] = useState(false);
+    const [runsError, setRunsError] = useState(null);
+    const [runDetailError, setRunDetailError] = useState(null);
     const favoriteIds = useMemo(() => new Set(favorites.map((f) => f.stockId)), [favorites]);
     const loadRecommendations = useCallback(async () => {
         setLoadingRec(true);
@@ -44,10 +52,57 @@ export function RecommendationsPage() {
             setLoadingFav(false);
         }
     }, []);
+    const loadAnalysisRuns = useCallback(async () => {
+        setLoadingRuns(true);
+        setRunsError(null);
+        try {
+            const r = await api.listAnalysisRuns(30);
+            setAnalysisRuns(r.items);
+            setSelectedRunId((prev) => prev ?? r.items[0]?.id ?? null);
+        }
+        catch {
+            setRunsError('無法載入分析紀錄，請確認 API 已啟動。');
+            setAnalysisRuns([]);
+        }
+        finally {
+            setLoadingRuns(false);
+        }
+    }, []);
     useEffect(() => {
         void loadRecommendations();
         void loadFavorites();
-    }, [loadRecommendations, loadFavorites]);
+        void loadAnalysisRuns();
+    }, [loadRecommendations, loadFavorites, loadAnalysisRuns]);
+    useEffect(() => {
+        if (!selectedRunId) {
+            setRunDetail(null);
+            setRunDetailError(null);
+            return;
+        }
+        let cancelled = false;
+        setLoadingRunDetail(true);
+        setRunDetail(null);
+        setRunDetailError(null);
+        api
+            .getAnalysisRun(selectedRunId)
+            .then((d) => {
+            if (!cancelled)
+                setRunDetail(d);
+        })
+            .catch(() => {
+            if (!cancelled) {
+                setRunDetail(null);
+                setRunDetailError('無法載入這筆分析報告。');
+            }
+        })
+            .finally(() => {
+            if (!cancelled)
+                setLoadingRunDetail(false);
+        });
+        return () => {
+            cancelled = true;
+        };
+    }, [selectedRunId]);
     async function handleAddFavorite(stockId) {
         const item = recData?.items.find((x) => x.stockId === stockId);
         if (!item)
@@ -82,5 +137,14 @@ export function RecommendationsPage() {
         setFavorites((prev) => prev.filter((f) => f.id !== id));
         setHint('已從最愛清單移除。');
     }
-    return (_jsxs("div", { className: "card", children: [_jsx("h2", { className: "page-title", children: "\u80A1\u7968\u63A8\u85A6\uFF06\u9810\u6E2C" }), _jsx("p", { className: "page-intro muted", children: "\u4F9D\u300C\u6EAB\u548C\u52D5\u80FD \u00D7 \u5206\u9EDE\u78BA\u8A8D\u300D\u7B56\u7565\uFF0C\u5217\u51FA\u77ED\u671F\u53EF\u89C0\u5BDF\u6A19\u7684\u3001\u8CB7\u5165\u5340\u9593\u3001\u5206\u6279\u65B9\u5F0F\u8207\u8CE3\u51FA\u689D\u4EF6\u3002\u559C\u6B61\u7684\u6A19\u7684\u53EF\u52A0\u5165\u6700\u611B\uFF0C\u4E8B\u5F8C\u67E5\u95B1\u5B8C\u6574\u7B56\u7565\u8207\u4F60\u7684\u8CB7\u9032\u7D00\u9304\u3002" }), _jsxs("div", { className: "rec-tabs", role: "tablist", children: [_jsx("button", { type: "button", role: "tab", className: tab === 'recommend' ? 'rec-tab active' : 'rec-tab', "aria-selected": tab === 'recommend', onClick: () => setTab('recommend'), children: "\u4ECA\u65E5\u63A8\u85A6" }), _jsxs("button", { type: "button", role: "tab", className: tab === 'favorites' ? 'rec-tab active' : 'rec-tab', "aria-selected": tab === 'favorites', onClick: () => setTab('favorites'), children: ["\u6211\u7684\u6700\u611B", favorites.length ? ` (${favorites.length})` : ''] })] }), hint ? _jsx("div", { className: "hint-soft", children: hint }) : null, tab === 'recommend' ? (_jsxs("section", { className: "rec-section", children: [_jsxs("div", { className: "row", style: { marginBottom: 16 }, children: [_jsx("button", { type: "button", disabled: loadingRec, onClick: () => void loadRecommendations(), children: loadingRec ? '更新中…' : '重新掃描' }), recData ? (_jsxs("span", { className: "muted", children: ["\u7B56\u7565\uFF1A", recData.strategyName, " \u00B7 \u8A0A\u865F\u65E5 ", recData.signalDate] })) : null] }), loadingRec && !recData ? _jsx("p", { className: "muted", children: "\u8F09\u5165\u63A8\u85A6\u4E2D\u2026" }) : null, recData?.items.length ? (_jsx("div", { className: "rec-stack", children: recData.items.map((item) => (_jsx(RecommendationCard, { item: item, isFavorite: favoriteIds.has(item.stockId), saving: savingId === item.stockId, onAddFavorite: () => void handleAddFavorite(item.stockId) }, item.stockId))) })) : null, recData ? (_jsx("p", { className: "muted", style: { marginTop: 20, fontSize: 12 }, children: recData.disclaimer })) : null] })) : (_jsxs("section", { className: "rec-section", children: [_jsx("p", { className: "muted", style: { marginBottom: 16 }, children: "\u6700\u611B\u6E05\u55AE\u4FDD\u5B58\u5728\u4F3A\u670D\u5668\uFF08\u4EE5\u672C\u6A5F\u700F\u89BD\u5668 ID \u5340\u5206\uFF09\u3002\u63DB\u96FB\u8166\u6216\u6E05\u9664\u700F\u89BD\u5668\u8CC7\u6599\u6703\u770B\u4E0D\u5230\u540C\u4E00\u6E05\u55AE\u3002" }), loadingFav && favorites.length === 0 ? _jsx("p", { className: "muted", children: "\u8F09\u5165\u6700\u611B\u4E2D\u2026" }) : null, !loadingFav && favorites.length === 0 ? (_jsx("div", { className: "hint-warn", children: "\u5C1A\u7121\u6700\u611B\u6A19\u7684\u3002\u5230\u300C\u4ECA\u65E5\u63A8\u85A6\u300D\u6309 \u2B50 \u52A0\u5165\u3002" })) : (_jsx("div", { className: "rec-stack", children: favorites.map((f) => (_jsx(FavoriteCard, { item: f, onSave: handleUpdateFavorite, onDelete: handleDeleteFavorite }, f.id))) }))] }))] }));
+    return (_jsxs("div", { className: "card", children: [_jsx("h2", { className: "page-title", children: "\u80A1\u7968\u63A8\u85A6\uFF06\u9810\u6E2C" }), _jsx("p", { className: "page-intro muted", children: "\u4F9D\u300C\u6EAB\u548C\u52D5\u80FD \u00D7 \u5206\u9EDE\u78BA\u8A8D\u300D\u7B56\u7565\uFF0C\u5217\u51FA\u77ED\u671F\u53EF\u89C0\u5BDF\u6A19\u7684\u3001\u8CB7\u5165\u5340\u9593\u3001\u5206\u6279\u65B9\u5F0F\u8207\u8CE3\u51FA\u689D\u4EF6\u3002\u559C\u6B61\u7684\u6A19\u7684\u53EF\u52A0\u5165\u6700\u611B\uFF0C\u4E8B\u5F8C\u67E5\u95B1\u5B8C\u6574\u7B56\u7565\u8207\u4F60\u7684\u8CB7\u9032\u7D00\u9304\u3002" }), _jsxs("div", { className: "rec-tabs", role: "tablist", children: [_jsx("button", { type: "button", role: "tab", className: tab === 'recommend' ? 'rec-tab active' : 'rec-tab', "aria-selected": tab === 'recommend', onClick: () => {
+                            setTab('recommend');
+                            setHint(null);
+                        }, children: "\u4ECA\u65E5\u63A8\u85A6" }), _jsxs("button", { type: "button", role: "tab", className: tab === 'favorites' ? 'rec-tab active' : 'rec-tab', "aria-selected": tab === 'favorites', onClick: () => {
+                            setTab('favorites');
+                            setHint(null);
+                        }, children: ["\u6211\u7684\u6700\u611B", favorites.length ? ` (${favorites.length})` : ''] }), _jsxs("button", { type: "button", role: "tab", className: tab === 'history' ? 'rec-tab active' : 'rec-tab', "aria-selected": tab === 'history', onClick: () => {
+                            setTab('history');
+                            setHint(null);
+                        }, children: ["\u5206\u6790\u7D00\u9304", analysisRuns.length ? ` (${analysisRuns.length})` : ''] })] }), hint ? _jsx("div", { className: "hint-soft", children: hint }) : null, tab === 'recommend' ? (_jsxs("section", { className: "rec-section", children: [_jsxs("div", { className: "row", style: { marginBottom: 16 }, children: [_jsx("button", { type: "button", disabled: loadingRec, onClick: () => void loadRecommendations(), children: loadingRec ? '更新中…' : '重新掃描' }), recData ? (_jsxs("span", { className: "muted", children: ["\u7B56\u7565\uFF1A", recData.strategyName, " \u00B7 \u8A0A\u865F\u65E5 ", recData.signalDate] })) : null] }), loadingRec && !recData ? _jsx("p", { className: "muted", children: "\u8F09\u5165\u63A8\u85A6\u4E2D\u2026" }) : null, recData?.items.length ? (_jsx("div", { className: "rec-stack", children: recData.items.map((item) => (_jsx(RecommendationCard, { item: item, isFavorite: favoriteIds.has(item.stockId), saving: savingId === item.stockId, onAddFavorite: () => void handleAddFavorite(item.stockId) }, item.stockId))) })) : null, recData ? (_jsx("p", { className: "muted", style: { marginTop: 20, fontSize: 12 }, children: recData.disclaimer })) : null] })) : tab === 'favorites' ? (_jsxs("section", { className: "rec-section", children: [_jsx("p", { className: "muted", style: { marginBottom: 16 }, children: "\u6700\u611B\u6E05\u55AE\u4FDD\u5B58\u5728\u4F3A\u670D\u5668\uFF08\u4EE5\u672C\u6A5F\u700F\u89BD\u5668 ID \u5340\u5206\uFF09\u3002\u63DB\u96FB\u8166\u6216\u6E05\u9664\u700F\u89BD\u5668\u8CC7\u6599\u6703\u770B\u4E0D\u5230\u540C\u4E00\u6E05\u55AE\u3002" }), loadingFav && favorites.length === 0 ? _jsx("p", { className: "muted", children: "\u8F09\u5165\u6700\u611B\u4E2D\u2026" }) : null, !loadingFav && favorites.length === 0 ? (_jsx("div", { className: "hint-warn", children: "\u5C1A\u7121\u6700\u611B\u6A19\u7684\u3002\u5230\u300C\u4ECA\u65E5\u63A8\u85A6\u300D\u6309 \u2B50 \u52A0\u5165\u3002" })) : (_jsx("div", { className: "rec-stack", children: favorites.map((f) => (_jsx(FavoriteCard, { item: f, onSave: handleUpdateFavorite, onDelete: handleDeleteFavorite }, f.id))) }))] })) : (_jsxs("section", { className: "rec-section", children: [_jsxs("div", { className: "row", style: { marginBottom: 16 }, children: [_jsx("button", { type: "button", disabled: loadingRuns, onClick: () => void loadAnalysisRuns(), children: loadingRuns ? '更新中…' : '重新載入' }), _jsx("span", { className: "muted", children: "Cursor Cloud \u6392\u7A0B\u6216\u624B\u52D5\u8DD1\u5B8C\u6703\u5BEB\u5165\u8CC7\u6599\u5EAB" })] }), _jsxs("div", { className: "analysis-run-layout", children: [runsError ? _jsx("div", { className: "hint-warn", children: runsError }) : null, _jsx(AnalysisRunList, { items: analysisRuns, selectedId: selectedRunId, loading: loadingRuns, onSelect: setSelectedRunId }), analysisRuns.length > 0 ? (_jsx(AnalysisRunDetailPanel, { detail: runDetail, loading: loadingRunDetail, error: runDetailError })) : null] })] }))] }));
 }

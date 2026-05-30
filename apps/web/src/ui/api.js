@@ -33,5 +33,7 @@ export const api = {
     listFavorites: () => jsonRequest('/favorites', { method: 'GET' }),
     addFavorite: (body) => jsonRequest('/favorites', { method: 'POST', body: JSON.stringify(body) }),
     updateFavorite: (id, body) => jsonRequest(`/favorites/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
-    deleteFavorite: (id) => jsonRequest(`/favorites/${id}`, { method: 'DELETE' })
+    deleteFavorite: (id) => jsonRequest(`/favorites/${id}`, { method: 'DELETE' }),
+    listAnalysisRuns: (limit = 30) => getJson(`/analysis-runs?limit=${limit}`),
+    getAnalysisRun: (id) => getJson(`/analysis-runs/${id}`)
 };

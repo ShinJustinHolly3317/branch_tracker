@@ -1,4 +1,6 @@
 import type {
+  AnalysisRunDetail,
+  AnalysisRunsListResponse,
   BranchPerformanceResponse,
   BranchSuggestResponse,
   ByBranchWindowResponse,
@@ -70,5 +72,8 @@ export const api = {
   updateFavorite: (id: string, body: UpdateFavoriteRequest) =>
     jsonRequest<UserFavorite>(`/favorites/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
   deleteFavorite: (id: string) =>
-    jsonRequest<void>(`/favorites/${id}`, { method: 'DELETE' })
+    jsonRequest<void>(`/favorites/${id}`, { method: 'DELETE' }),
+  listAnalysisRuns: (limit = 30) =>
+    getJson<AnalysisRunsListResponse>(`/analysis-runs?limit=${limit}`),
+  getAnalysisRun: (id: string) => getJson<AnalysisRunDetail>(`/analysis-runs/${id}`)
 }

@@ -8,6 +8,8 @@ import type {
   ByStockWindowResponse,
   CreateFavoriteRequest,
   FavoritesListResponse,
+  AnalysisRunDetail,
+  AnalysisRunsListResponse,
   LatestStatusResponse,
   PerformanceMetric,
   ShortTermRecommendationsResponse,
@@ -24,6 +26,7 @@ import { getStockCatalog } from './stockCatalog.js'
 import { getStockPriceWindow } from './stockPrice.js'
 import { computeShortTermRecommendations, getRecommendationForStock } from './recommendations.js'
 import { createFavorite, deleteFavorite, listFavorites, updateFavorite } from './favorites.js'
+import { getAnalysisRun, listAnalysisRuns } from './analysisRuns.js'
 
 const CLIENT_ID_HEADER = 'x-twbbd-client-id'
 
@@ -354,6 +357,25 @@ export function createApp(): express.Express {
     const ok = await deleteFavorite(db, clientId, id)
     if (!ok) return res.status(404).json({ error: 'not_found' })
     return res.status(204).send()
+  })
+
+  app.get('/analysis-runs', async (req, res) => {
+    const parsed = z.coerce.number().int().min(1).max(100).safeParse(req.query.limit ?? 30)
+    if (!parsed.success) return res.status(400).json({ error: 'invalid_limit' })
+    const limit = parsed.data
+    const db = getDb()
+    const items = await listAnalysisRuns(db, limit)
+    const body: AnalysisRunsListResponse = { items }
+    return res.json(body)
+  })
+
+  app.get('/analysis-runs/:id', async (req, res) => {
+    const parsed = z.string().uuid().safeParse(req.params.id)
+    if (!parsed.success) return res.status(400).json({ error: 'invalid_id' })
+    const db = getDb()
+    const item = await getAnalysisRun(db, parsed.data)
+    if (!item) return res.status(404).json({ error: 'not_found' })
+    return res.json(item satisfies AnalysisRunDetail)
   })
 
   return app
