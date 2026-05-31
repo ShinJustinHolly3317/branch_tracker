@@ -1,3 +1,4 @@
+import { mergeBranchBlobPayloads } from '@twbbd/core'
 import type {
   BranchAgg,
   ByBranchWindowResponse,
@@ -97,30 +98,65 @@ export async function aggregateByBranch(params: {
   const byStock = new Map<string, StockAgg>()
 
   if (dates.length > 0) {
-    const r = await db.query<{ stock_id: string; payload: unknown }>(
-      `SELECT stock_id, payload
-       FROM daily_stock_blob
-       WHERE trade_date = ANY($1::date[])
-         AND market = ANY($2::text[])`,
-      [dates, ['TWSE', 'TPEX']]
+    const branchR = await db.query<{ payload: unknown }>(
+      `SELECT payload
+       FROM daily_branch_blob
+       WHERE branch_id = $1
+         AND trade_date = ANY($2::date[])`,
+      [branchId, dates]
     )
 
-    for (const row of r.rows) {
-      const rows = row.payload as TradeByBranchDaily[]
-      if (!Array.isArray(rows)) continue
-      for (const rr of rows) {
-        if (rr.branchId !== branchId) continue
-        const cur = byStock.get(rr.stockId) ?? {
-          stockId: rr.stockId,
+    if (branchR.rows.length > 0) {
+      for (const [stockId, row] of mergeBranchBlobPayloads(branchR.rows)) {
+        const cur = byStock.get(stockId) ?? {
+          stockId,
           buyShares: 0,
           sellShares: 0,
           netShares: 0,
           shareOfNetAbs: 0
         }
-        cur.buyShares += safeNumber(rr.buyShares)
-        cur.sellShares += safeNumber(rr.sellShares)
-        cur.netShares += safeNumber(rr.netShares)
-        byStock.set(rr.stockId, cur)
+        cur.buyShares += row.buyShares
+        cur.sellShares += row.sellShares
+        cur.netShares += row.netShares
+        byStock.set(stockId, cur)
+      }
+    } else {
+      const stockCountR = await db.query<{ n: string }>(
+        `SELECT COUNT(*)::text AS n
+         FROM daily_stock_blob
+         WHERE trade_date = ANY($1::date[])
+           AND market = ANY($2::text[])`,
+        [dates, ['TWSE', 'TPEX']]
+      )
+      const hasStockBlob = Number(stockCountR.rows[0]?.n ?? 0) > 0
+
+      if (hasStockBlob) {
+        const r = await db.query<{ stock_id: string; payload: unknown }>(
+          `SELECT stock_id, payload
+           FROM daily_stock_blob
+           WHERE trade_date = ANY($1::date[])
+             AND market = ANY($2::text[])`,
+          [dates, ['TWSE', 'TPEX']]
+        )
+
+        for (const row of r.rows) {
+          const rows = row.payload as TradeByBranchDaily[]
+          if (!Array.isArray(rows)) continue
+          for (const rr of rows) {
+            if (rr.branchId !== branchId) continue
+            const cur = byStock.get(rr.stockId) ?? {
+              stockId: rr.stockId,
+              buyShares: 0,
+              sellShares: 0,
+              netShares: 0,
+              shareOfNetAbs: 0
+            }
+            cur.buyShares += safeNumber(rr.buyShares)
+            cur.sellShares += safeNumber(rr.sellShares)
+            cur.netShares += safeNumber(rr.netShares)
+            byStock.set(rr.stockId, cur)
+          }
+        }
       }
     }
   }

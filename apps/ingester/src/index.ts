@@ -7,6 +7,7 @@ import type { LatestStatusResponse, Market } from '@twbbd/shared'
 import { fetchTwseStockBranchDaily } from './providers/twse.js'
 import { fetchTaiwanTradableStockCodes } from './providers/taiwanStockList.js'
 import { getDb } from './db.js'
+import { runIngestPostProcess } from '@twbbd/core'
 import { mergeBranchCatalogRow } from './branchCatalog.js'
 
 /** 略過時一行錯誤摘要（避免整段 stack 洗版） */
@@ -83,6 +84,15 @@ async function ingestFake(params: { backfillDays: number }) {
       'INSERT INTO ingest_status (id, payload) VALUES (1,$1::jsonb) ON CONFLICT (id) DO UPDATE SET payload=EXCLUDED.payload, updated_at=now()',
       [JSON.stringify(status)]
     )
+
+    if (getEnv().INGEST_POST_PROCESS) {
+      const db = getDb()
+      const post = await runIngestPostProcess({ db, tradeDate: endDate })
+      // eslint-disable-next-line no-console
+      console.log(
+        `[ingester] post-process tradeDate=${endDate} branchBlobRows=${post.branchBlobRows} snapshotEnd=${post.snapshotEndDate ?? '—'}`
+      )
+    }
   } finally {
     client.release()
   }
@@ -215,6 +225,15 @@ async function ingestTwseLatest(params: {
   console.log(`[ingester] 本輪結束 ok=${ok} fail=${fail}`)
   if (ok === 0 && total > 0) {
     throw new Error('twse_ingest_all_failed')
+  }
+
+  const env = getEnv()
+  if (env.INGEST_POST_PROCESS && latestDate) {
+    const post = await runIngestPostProcess({ db, tradeDate: latestDate })
+    // eslint-disable-next-line no-console
+    console.log(
+      `[ingester] post-process tradeDate=${latestDate} branchBlobRows=${post.branchBlobRows} snapshotEnd=${post.snapshotEndDate ?? '—'}`
+    )
   }
 }
 

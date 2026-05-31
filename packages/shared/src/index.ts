@@ -112,6 +112,8 @@ export type BranchPerformanceResponse = {
   effectiveForwardTradingDays?: number
   /** human readable（繁中）給前端顯示；未來可加 i18n */
   debugMessage?: string
+  /** 回應來自 Postgres performance_branch_snapshot */
+  fromCache?: boolean
 }
 
 export type LatestStatusResponse = {

@@ -11,6 +11,7 @@
     "ingest:cron": "node --enable-source-maps dist/index.js ingest:cron"
   },
   "dependencies": {
+    "@twbbd/core": "*",
     "@twbbd/shared": "*",
     "cheerio": "^1.0.0",
     "pg": "^8.16.3",

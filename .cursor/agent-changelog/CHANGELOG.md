@@ -2,6 +2,12 @@
 
 > 新的條目加在最上面。Subagent 的「Changelog 教訓」區從這裡 sync。
 
+## 2026-05-31 — Performance / Branch API 快取與 daily_branch_blob
+
+- **來源**：fullstack-dev / grill-me
+- **功能**：`daily_branch_blob` 翻轉索引；`performance_branch_snapshot` Postgres 快取（manifest 含三 metric）；`/branches/:id` 優先讀 blob；`/performance/branches` snapshot hit/miss；ingest 結束 `INGEST_POST_PROCESS`；`npm run backfill:branch-blob`
+- **Agent 規則**：共享邏輯放 `@twbbd/core`；post-process 先 purge 非最新 end_date 的 snapshot 再 upsert 預設參數；自訂查詢參數 on miss 仍 upsert 同一 manifest 列
+
 ## 2026-05-30 — Team Trading 排程改 Cursor Cloud + 分析紀錄 DB/UI
 
 - **來源**：team-dev / user

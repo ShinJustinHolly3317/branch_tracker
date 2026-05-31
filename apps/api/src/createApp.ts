@@ -21,7 +21,14 @@ import type {
 import { getDb } from './db.js'
 import { getLastNDates, getLatestDate } from './dates.js'
 import { aggregateByBranch, aggregateByStock } from './agg.js'
-import { computeBranchPerformance } from './performance.js'
+import {
+  computeAllBranchPerformanceMetrics,
+  fetchAllTradingDates,
+  getPerformanceFromSnapshot,
+  resolvePerformanceCalendar,
+  slicePerformanceFromManifest,
+  upsertPerformanceSnapshot
+} from '@twbbd/core'
 import { getStockCatalog } from './stockCatalog.js'
 import { getStockPriceWindow } from './stockPrice.js'
 import { computeShortTermRecommendations, getRecommendationForStock } from './recommendations.js'
@@ -202,78 +209,85 @@ export function createApp(): express.Express {
     const minSample = z.coerce.number().int().min(1).max(500).default(10).parse(req.query.minSample)
 
     const db = getDb()
-    const allDatesR = await db.query<{ trade_date: string }>(
-      'SELECT trade_date::text FROM trading_dates ORDER BY trade_date ASC'
-    )
-    const allDates = allDatesR.rows.map((x) => x.trade_date)
-    if (allDates.length === 0) {
+    const allDates = await fetchAllTradingDates(db)
+    const cal = resolvePerformanceCalendar({ allDates, forwardDays })
+
+    if (!cal.ok) {
       return res.json({
-        startDate: '—',
-        endDate: '—',
+        startDate: cal.startDate,
+        endDate: cal.endDate,
         tradingDays: days,
         forwardTradingDays: forwardDays,
         metric,
         minSampleSize: minSample,
         top: [],
-        reasonCode: 'missing_trading_dates',
+        reasonCode: cal.reasonCode,
         requestedForwardTradingDays: forwardDays,
-        effectiveForwardTradingDays: forwardDays,
-        debugMessage: 'trading_dates 沒有任何資料；請先跑 ingester 寫入交易日曆。'
-      })
+        effectiveForwardTradingDays: cal.effectiveK,
+        debugMessage: cal.debugMessage
+      } satisfies BranchPerformanceResponse)
     }
 
-    if (allDates.length < 2) {
+    const snapshotKey = {
+      endDate: cal.endDate,
+      days,
+      forwardDays: cal.effectiveK,
+      minSample
+    }
+
+    const cached = await getPerformanceFromSnapshot({ db, key: snapshotKey, metric })
+    if (cached) {
+      const bumped =
+        cal.effectiveK < forwardDays
+          ? `已將前瞻 K 從 ${forwardDays} 自動下修為 ${cal.effectiveK}（目前 trading_dates 只有 ${allDates.length} 天）。`
+          : undefined
       return res.json({
-        startDate: allDates[0] ?? '—',
-        endDate: allDates[0] ?? '—',
-        tradingDays: days,
-        forwardTradingDays: forwardDays,
-        metric,
-        minSampleSize: minSample,
-        top: [],
-        reasonCode: 'insufficient_forward_calendar',
-        requestedForwardTradingDays: forwardDays,
-        effectiveForwardTradingDays: forwardDays,
-        debugMessage: 'Performance 需要至少 2 個交易日（trading_dates）才能計算前瞻報酬；目前只有 1 天。'
+        ...cached,
+        ...(bumped ? { debugMessage: [cached.debugMessage, bumped].filter(Boolean).join(' ') } : {})
       })
     }
 
-    // Make sure we have forward prices: pick the largest feasible K (<= requested) so endIdx >= 0
-    const maxFeasibleK = Math.max(0, allDates.length - 1 - 0) // up to len-1
-    const effectiveK = Math.min(forwardDays, maxFeasibleK)
-    const endIdx = allDates.length - 1 - effectiveK
-    if (endIdx < 0) {
-      // should not happen given effectiveK, but keep defensive
-      return res.json({
-        startDate: '—',
-        endDate: '—',
-        tradingDays: days,
-        forwardTradingDays: forwardDays,
-        metric,
-        minSampleSize: minSample,
-        top: [],
-        reasonCode: 'insufficient_forward_calendar',
-        requestedForwardTradingDays: forwardDays,
-        effectiveForwardTradingDays: effectiveK,
-        debugMessage: '交易日曆不足以支援前瞻 K（即便自動下修仍失敗）。'
-      })
-    }
-    const endDate = allDates[endIdx]
-
-    const resp: BranchPerformanceResponse = await computeBranchPerformance({
+    const computed = await computeAllBranchPerformanceMetrics({
       db,
       datesAll: allDates,
-      endDate,
+      endDate: cal.endDate,
       tradingDays: days,
-      forwardTradingDays: effectiveK,
-      metric,
+      forwardTradingDays: cal.effectiveK,
       minSampleSize: minSample,
       requestedForwardTradingDays: forwardDays
     })
 
+    await upsertPerformanceSnapshot(db, snapshotKey, {
+      startDate: computed.startDate,
+      endDate: computed.endDate,
+      tradingDays: computed.tradingDays,
+      forwardTradingDays: computed.forwardTradingDays,
+      minSampleSize: computed.minSampleSize,
+      requestedForwardTradingDays: computed.requestedForwardTradingDays,
+      effectiveForwardTradingDays: computed.effectiveForwardTradingDays,
+      debugMessage: computed.debugMessage,
+      metrics: computed.metrics
+    })
+
+    let resp = slicePerformanceFromManifest(
+      {
+        startDate: computed.startDate,
+        endDate: computed.endDate,
+        tradingDays: computed.tradingDays,
+        forwardTradingDays: computed.forwardTradingDays,
+        minSampleSize: computed.minSampleSize,
+        requestedForwardTradingDays: computed.requestedForwardTradingDays,
+        effectiveForwardTradingDays: computed.effectiveForwardTradingDays,
+        debugMessage: computed.debugMessage,
+        metrics: computed.metrics
+      },
+      metric
+    )
+    resp = { ...resp, fromCache: false }
+
     const bumped =
-      effectiveK < forwardDays
-        ? `已將前瞻 K 從 ${forwardDays} 自動下修为 ${effectiveK}（目前 trading_dates 只有 ${allDates.length} 天）。`
+      cal.effectiveK < forwardDays
+        ? `已將前瞻 K 從 ${forwardDays} 自動下修為 ${cal.effectiveK}（目前 trading_dates 只有 ${allDates.length} 天）。`
         : undefined
 
     return res.json({

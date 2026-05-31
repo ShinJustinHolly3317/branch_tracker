@@ -31,7 +31,12 @@ const EnvSchema = z.object({
   /** IANA 時區，須與 INGEST_CRON 搭配 */
   INGEST_TZ: z.string().default('Asia/Taipei'),
   /** 啟動時是否立刻跑一次（除錯用） */
-  INGEST_RUN_ON_START: z.enum(['true', 'false']).default('false')
+  INGEST_RUN_ON_START: z.enum(['true', 'false']).default('false'),
+  /** ingest 結束後重建 branch blob 與績效 snapshot（預設 true） */
+  INGEST_POST_PROCESS: z
+    .string()
+    .optional()
+    .transform((s) => s !== 'false' && (s ?? '').toLowerCase() !== 'false')
 })
 
 export type Env = z.infer<typeof EnvSchema>

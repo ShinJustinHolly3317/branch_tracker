@@ -8,10 +8,11 @@
     "dev": "node --watch --enable-source-maps dist/serve.js",
     "build": "tsc -p tsconfig.json",
     "lint": "eslint .",
-    "test": "npm run build && node --test dist/performance.test.js"
+    "test": "npm run -w @twbbd/core test && npm run build && node --test dist/agg.test.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.106.1",
+    "@twbbd/core": "*",
     "@twbbd/shared": "*",
     "cors": "^2.8.5",
     "express": "^4.21.2",

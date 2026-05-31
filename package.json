@@ -9,11 +9,12 @@
     "sync:supabase": "node scripts/sync-to-supabase.mjs",
     "team-trading": "node scripts/team-trading-run.mjs",
     "db:migrate": "node scripts/apply-migrations.mjs",
+    "backfill:branch-blob": "npm run -w @twbbd/shared build && npm run -w @twbbd/core build && node scripts/backfill-daily-branch-blob.mjs",
     "dev:api": "npm run -w @twbbd/api dev",
     "dev:ingest": "npm run -w @twbbd/ingester ingest:once",
     "ingest:local": "npm run -w @twbbd/shared build && npm run -w @twbbd/ingester build && DATABASE_URL=postgres://twbbd:twbbd@localhost:5432/twbbd TWSE_STOCKS=all TW_STOCK_UNIVERSE=twse DEBUG_INGEST=0 npm run -w @twbbd/ingester ingest:once",
     "ingest:fake": "npm run -w @twbbd/shared build && npm run -w @twbbd/ingester build && TWSE_STOCKS= npm run -w @twbbd/ingester ingest:once",
-    "build": "npm run -w @twbbd/shared build && npm run -w @twbbd/api build && npm run -w @twbbd/ingester build && npm run -w @twbbd/web build",
+    "build": "npm run -w @twbbd/shared build && npm run -w @twbbd/core build && npm run -w @twbbd/api build && npm run -w @twbbd/ingester build && npm run -w @twbbd/web build",
     "lint": "npm -ws run lint"
   },
   "devDependencies": {

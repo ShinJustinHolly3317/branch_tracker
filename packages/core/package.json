@@ -1,0 +1,23 @@
+{
+  "name": "@twbbd/core",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "lint": "eslint .",
+    "test": "npm run build && node --test dist/performance.test.js dist/performanceSnapshot.test.js dist/dailyBranchBlob.test.js"
+  },
+  "dependencies": {
+    "@twbbd/shared": "*",
+    "pg": "^8.16.3"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/pg": "^8.15.5",
+    "eslint": "^9.0.0",
+    "typescript": "^5.8.0"
+  }
+}
